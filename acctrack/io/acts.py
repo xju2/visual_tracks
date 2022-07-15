@@ -6,25 +6,10 @@ from typing import Any
 
 from acctrack.io import MeasurementData
 from acctrack.io.base import BaseReader
+from acctrack.io.utils import make_true_edges
 
 import numpy as np
 import pandas as pd
-import itertools
-
-
-
-def true_edges(hits):
-    hit_list = hits.groupby(['particle_id', 'geometry_id'],
-        sort=False)['index'].agg(lambda x: list(x)).groupby(
-            level=0).agg(lambda x: list(x))
-
-    e = []
-    for row in hit_list.values:
-        for i, j in zip(row[0:-1], row[1:]):
-            e.extend(list(itertools.product(i, j)))
-
-    layerless_true_edges = np.array(e).T
-    return layerless_true_edges
 
 
 class ActsReader(BaseReader):
@@ -112,7 +97,7 @@ class ActsReader(BaseReader):
         sp_hits = sp_hits.sort_values('R').reset_index(
             drop=True).reset_index(drop=False)
 
-        edges = true_edges(sp_hits)
+        edges = make_true_edges(sp_hits)
         
         data = MeasurementData(
             hits, measurements, meas2hits,

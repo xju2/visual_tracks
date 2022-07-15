@@ -26,5 +26,7 @@ setup(
     classifiers=[
         "Programming Language :: Python :: 3",
     ],
-    scripts=[],
+    scripts=[
+        "scripts/process_data.py",
+    ],
 )

@@ -1,14 +1,17 @@
-"""Read csv files obtained from ACTS and return """
+"""Read csv files obtained from ACTS and return MeasurementData"""
 import os
 import re
 import glob
 from typing import Any
 
+from acctrack.io import MeasurementData
+from acctrack.io.base import BaseReader
+
 import numpy as np
 import pandas as pd
 import itertools
 
-from gnn4itk.io import MeasurementData
+
 
 def true_edges(hits):
     hit_list = hits.groupby(['particle_id', 'geometry_id'],
@@ -24,9 +27,9 @@ def true_edges(hits):
     return layerless_true_edges
 
 
-class ACTSCSVReader:
-    def __init__(self, basedir, spname='spacepoint', *args, **kwargs):
-        self.basedir = basedir
+class ActsReader(BaseReader):
+    def __init__(self, basedir, spname='spacepoint', name="ActsReader"):
+        super().__init__(basedir, name)
         self.spname = spname
 
         # count how many events in the directory
@@ -42,7 +45,7 @@ class ACTSCSVReader:
             self.nevts, self.basedir))
 
 
-    def read(self, evtid: int = None):
+    def read(self, evtid: int = None) -> MeasurementData:
         """Read one event from the input directory.
         
         Return:
@@ -63,12 +66,12 @@ class ACTSCSVReader:
         hits = hits[hits.columns[:-1]]
         hits = hits.reset_index().rename(columns = {'index':'hit_id'})
 
-        # read measurements
+        # read measurements, maps to hits, and spacepoints
         measurements = pd.read_csv(measurements_fname)
         meas2hits = pd.read_csv(measurements2hits_fname)
         sp = pd.read_csv(sp_fname)
 
-        # read particles and add more variables
+        # read particles and add more variables for performance evaluation
         particles = pd.read_csv(p_name)
         pt = np.sqrt(particles.px**2 + particles.py**2)
         momentum = np.sqrt(pt**2 + particles.pz**2)
@@ -77,9 +80,26 @@ class ACTSCSVReader:
         radius = np.sqrt(particles.vx**2 + particles.vy**2)
         particles = particles.assign(pt=pt, radius=radius, eta=eta)
 
+        # read cluster information
+        cell_fname = '{}-cells.csv'.format(prefix)
+        cells = pd.read_csv(cell_fname)
+
+        ## calculate cluster shape information
+        direction_count_u = cells.groupby(['hit_id']).channel0.agg(['min', 'max'])
+        direction_count_v = cells.groupby(['hit_id']).channel1.agg(['min', 'max'])
+        nb_u = direction_count_u['max'] - direction_count_u['min'] + 1
+        nb_v = direction_count_v['max'] - direction_count_v['min'] + 1
+        hit_cells = cells.groupby(['hit_id']).value.count().values
+        hit_value = cells.groupby(['hit_id']).value.sum().values
+        ## as I don't access to the rotation matrix and the pixel pitches,
+        ## I can't calculate cluster's local/global position 
+        sp = sp.assign(len_u=nb_u, len_v=nb_v,cell_count=hit_cells,cell_val=hit_value)
+
+
         sp_hits = sp.merge(meas2hits, on='measurement_id', how='left').merge(
             hits, on='hit_id', how='left')
-        sp_hits = sp_hits.merge(particles, on='particle_id', how='left')
+        sp_hits = sp_hits.merge(
+            particles[['particle_id', 'vx', 'vy', 'vz']], on='particle_id', how='left')
 
         r = np.sqrt(sp_hits.x**2 + sp_hits.y**2)
         phi = np.arctan2(sp_hits.y, sp_hits.x)

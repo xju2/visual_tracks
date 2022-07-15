@@ -17,7 +17,11 @@ setup(
     url="https://github.com/xju2/visual_tracks",
     license="MIT",
     packages=find_packages(),
-    install_requires=[],
+    install_requires=[
+        "numpy",
+        "pandas",
+        "matplotlib",
+    ],
     extras_require={},
     classifiers=[
         "Programming Language :: Python :: 3",

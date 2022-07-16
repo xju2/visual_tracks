@@ -5,7 +5,7 @@ from multiprocessing import Pool
 from functools import partial
 
 from acctrack.io.utils import save_to_np
-from acctrack.io.acts import ActsReader
+from acctrack import io
 
 
 def process(evtid, reader, output_dir):
@@ -22,9 +22,16 @@ if __name__ == "__main__":
     add_arg("out_dir", help="output directory")
     add_arg("-w", "--workers", help='number of workers', default=1, type=int)
     add_arg("--spname", help='spacepoint name', default='spacepoints')
+    add_arg("--reader", help='reader class', default=None, choices=list(io.__all__))
     args = parser.parse_args()
 
-    reader = ActsReader(args.in_dir, args.spname)
+    if args.reader is None:
+        print("Specify a data type via --reader")
+        parser.print_help()
+        exit(1)
+
+
+    reader = getattr(io, args.reader)(args.in_dir, args.spname)
 
     if args.workers < 2:
         for evtid in reader.all_evtids:

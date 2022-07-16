@@ -1,4 +1,13 @@
-"""Read csv files obtained from ACTS and return MeasurementData"""
+"""Read csv files obtained from ACTS and return MeasurementData
+
+Assume the files are like:
+acts/event000001000-hits.csv
+acts/event000001000-measurements.csv
+acts/event000001000-meas2hits.csv
+acts/event000001000-spacepoints.csv
+acts/event000001000-particles_final.csv
+acts/event000001000-cells.csv
+"""
 import os
 import re
 import glob
@@ -103,6 +112,3 @@ class ActsReader(BaseReader):
             hits, measurements, meas2hits,
             sp_hits, particles, edges, os.path.abspath(prefix))
         return data
-
-    def __call__(self, evtid: int = None, *args: Any, **kwds: Any) -> Any:
-        return self.read(evtid)

@@ -14,8 +14,7 @@ from acctrack.viewer import viewer
 def process(evtid, reader, output_dir, check_only=False):
     filename = os.path.join(output_dir, str(evtid))
     if check_only:
-        filename = filename + ".npz"
-        data = load_from_np(filename)
+        data = load_from_np( filename + ".npz")
         dump_data(data)
         viewer.view_graph(data[0], data[1], data[2], outname=filename+"_graph.png")
     else:

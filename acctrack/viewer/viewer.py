@@ -98,7 +98,7 @@ def view_graph(hits: np.ndarray, pids: np.ndarray, edges: np.ndarray,
         axs[0].scatter(x, y, s=markersize, label=str(pid))
         axs[1].scatter(z, r, s=markersize)
 
-    axs[0].legend()
+    axs[0].legend(fontsize=10)
 
     # add edges
     sel_edges = edges[:, np.isin(edges[0], all_sel_hit_idx) \

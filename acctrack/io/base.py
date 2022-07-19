@@ -13,6 +13,8 @@ class BaseReader:
         """
         self.name = name
         self.basedir = basedir
+        self.all_evtids = []
+        self.nevts = 0
 
     def read(self, evtid: int = None) -> MeasurementData:
         """Read one event from the input directory."""

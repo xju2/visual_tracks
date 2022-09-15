@@ -27,6 +27,6 @@ setup(
         "Programming Language :: Python :: 3",
     ],
     scripts=[
-        "scripts/process_data.py",
+        "scripts/process_track_data.py",
     ],
 )

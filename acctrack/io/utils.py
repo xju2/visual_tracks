@@ -11,7 +11,7 @@ scales = np.array([1000, np.pi, 1000], dtype=np.float32)
 
 particle_features = [
     'particle_id', 'pt', 'eta',
-    'charge', 'vx', 'vy', 'vz', 'radius'
+    'vx', 'vy', 'vz', 'radius'
 ]
 cluster_shape_features = [
     'len_u', 'len_v', 'cell_count', 'cell_val',
@@ -41,6 +41,19 @@ def load_from_np(fname, edge_name='true_edges'):
     hits, pids, true_edges, cells, particles = \
         arrays['x'], arrays['pid'], arrays[edge_name], arrays['cells'], arrays['particles']
     return (hits, pids, true_edges, cells, particles)
+
+
+def dump_data(data):
+    ## data are those load from numpy array, i.e. hits, pids, true_edges, cells, particles
+    hits, pids, true_edges, cells, particles = data
+    print("hits:", hits.shape)
+    print("pids:", pids.shape)
+    print("true_edges:", true_edges.shape)
+    print("cells:", cells.shape)
+    print("particles:", particles.shape)
+    ## plot the edges
+
+
 
 
 def make_true_edges(hits):

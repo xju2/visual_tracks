@@ -58,8 +58,12 @@ def plot(track: np.ndarray,
 
 
 def view_graph(hits: np.ndarray, pids: np.ndarray, edges: np.ndarray,
-    outname: str = None, markersize: int = 20, max_tracks: int = 10):
-    """View a graph of hits and edges.
+    outname: str = None,
+    markersize: int = 20,
+    max_tracks: int = 10,
+    with_legend: bool = False):
+    """View a graph of hits and edges. If max_tracks is too large,
+    we only plot the nodes and edges with the same color.
 
     Args:
         hits: spacepoint positions in [r, phi, z]
@@ -70,11 +74,15 @@ def view_graph(hits: np.ndarray, pids: np.ndarray, edges: np.ndarray,
         max_tracks: maximum number of tracks for visulization
     """
     unique_particles = np.unique(pids)
+    do_only_nodes = False
 
     if max_tracks is not None and max_tracks < len(unique_particles)-1:
         sel_pids = unique_particles[1:max_tracks+1]
     else:
         sel_pids = unique_particles[1:]
+        print("only plot the nodes!")
+        do_only_nodes = True
+        max_tracks = len(sel_pids) + 1
 
     print(f'randomly select {max_tracks} particles for display')
     all_sel_hits = hits[np.isin(pids, sel_pids)]
@@ -91,27 +99,37 @@ def view_graph(hits: np.ndarray, pids: np.ndarray, edges: np.ndarray,
         return x,y,z,r,phi
 
     _, axs = plt.subplots(1, 2, figsize=(13, 6))
-    axs = axs.flatten()
-    for pid in sel_pids:
-        sel_hits = hits[pids==pid]
-        x, y, z, r, _ = get_hit_info(sel_hits)
-        axs[0].scatter(x, y, s=markersize, label=str(pid))
+    if not do_only_nodes:
+        for pid in sel_pids:
+            sel_hits = hits[pids==pid]
+            x, y, z, r, _ = get_hit_info(sel_hits)
+            axs[0].scatter(x, y, s=markersize, label=str(pid))
+            axs[1].scatter(z, r, s=markersize)
+
+        if with_legend: axs[0].legend(fontsize=10)
+
+        sel_edges = edges[:, np.isin(edges[0], all_sel_hit_idx) \
+            & np.isin(edges[1], all_sel_hit_idx)]
+        print("selected {:,} edges from total {:,} true edges".format(
+            sel_edges.shape[1], edges.shape[1]))
+
+        sel_edges = sel_edges.T
+        for iedge in range(sel_edges.shape[0]):
+            sel_hits = hits[sel_edges[iedge]]
+            x, y, z, r, _ = get_hit_info(sel_hits)
+            axs[0].plot(x, y, color='k', lw=2., alpha=0.5)
+            axs[1].plot(z, r, color='k', lw=2., alpha=0.5)
+    else:
+        x, y, z, r, _ = get_hit_info(hits)
+        axs[0].scatter(x, y, s=markersize)
         axs[1].scatter(z, r, s=markersize)
-
-    axs[0].legend(fontsize=10)
-
-    # add edges
-    sel_edges = edges[:, np.isin(edges[0], all_sel_hit_idx) \
-        & np.isin(edges[1], all_sel_hit_idx)]
-    print("selected {:,} edges from total {:,} true edges".format(
-        sel_edges.shape[1], edges.shape[1]))
-
-    sel_edges = sel_edges.T
-    for iedge in range(sel_edges.shape[0]):
-        sel_hits = hits[sel_edges[iedge]]
-        x, y, z, r, _ = get_hit_info(sel_hits)
-        axs[0].plot(x, y, color='k', lw=2., alpha=0.5)
-        axs[1].plot(z, r, color='k', lw=2., alpha=0.5)
+        # plot edges
+        sel_edges = edges.T
+        for iedge in range(sel_edges.shape[0]):
+            sel_hits = hits[sel_edges[iedge]]
+            x, y, z, r, _ = get_hit_info(sel_hits)
+            axs[0].plot(x, y, color='grey', lw=.5, alpha=0.25)
+            axs[1].plot(z, r, color='grey', lw=.5, alpha=0.25)
 
 
     axs[0].set_xlabel('X [mm]')
@@ -120,4 +138,3 @@ def view_graph(hits: np.ndarray, pids: np.ndarray, edges: np.ndarray,
     axs[1].set_ylabel('R [mm]')
     if outname is not None:
         plt.savefig(outname)
-

@@ -128,8 +128,8 @@ def view_graph(hits: np.ndarray, pids: np.ndarray, edges: np.ndarray,
         for iedge in range(sel_edges.shape[0]):
             sel_hits = hits[sel_edges[iedge]]
             x, y, z, r, _ = get_hit_info(sel_hits)
-            axs[0].plot(x, y, color='grey', lw=.5, alpha=0.25)
-            axs[1].plot(z, r, color='grey', lw=.5, alpha=0.25)
+            axs[0].plot(x, y, color='grey', lw=.5, alpha=0.35)
+            axs[1].plot(z, r, color='grey', lw=.5, alpha=0.35)
 
 
     axs[0].set_xlabel('X [mm]')

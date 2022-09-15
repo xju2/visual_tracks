@@ -1,11 +1,6 @@
-import os
-import time
 import pickle
-import logging
-import argparse
 import numpy as np
 import pandas as pd
-import functools
 
 import trackml.dataset
 

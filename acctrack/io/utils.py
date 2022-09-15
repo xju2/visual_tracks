@@ -54,8 +54,6 @@ def dump_data(data):
     ## plot the edges
 
 
-
-
 def make_true_edges(hits):
     hit_list = hits.groupby(['particle_id', 'geometry_id'],
         sort=False)['index'].agg(lambda x: list(x)).groupby(

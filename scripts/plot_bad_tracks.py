@@ -20,7 +20,9 @@ import hydra
 from omegaconf import DictConfig
 
 import matplotlib.pyplot as plt
-import seaborn as sns
+import matplotlib.colors as colors
+
+from acctrack.utils_plot import add_yline
 
 def analyze_tracks(
         trk_perf_fname: str,
@@ -53,24 +55,39 @@ def plot_bad_tracks(cfg: DictConfig) -> None:
     print("Total number of events: {} will be processed by {} workers".format(
         len(event_files), cfg.num_workers))
 
-    with ThreadPoolExecutor(max_workers=cfg.num_workers) as executor:
-        futures = [executor.submit(analyze_tracks, os.path.join(track_perf_path, event_file)) \
-                   for event_file in event_files]
+    outname = os.path.join(cfg.output_dir, 'bad_tracks.parquet')
+    if os.path.exists(outname) and not cfg.force_overwrite:
+        print(f"Output file {outname} already exists.")
+        df = pd.read_parquet(outname)
+    else:
+        print(f"Output file {outname} does not exist. Will be created.")    
+        with ThreadPoolExecutor(max_workers=cfg.num_workers) as executor:
+            futures = [executor.submit(analyze_tracks, os.path.join(track_perf_path, event_file)) \
+                    for event_file in event_files]
 
-        dfs = [future.result() for future in concurrent.futures.as_completed(futures)]
-        df = pd.concat(dfs, ignore_index=True)
+            dfs = [future.result() for future in concurrent.futures.as_completed(futures)]
+            df = pd.concat(dfs, ignore_index=True)
 
-    # df.to_hdf(os.path.join(cfg.output_dir, 'bad_tracks.h5'),
-    #           key='data', mode='w', complevel=9, complib='blosc')
-    df.to_parquet(os.path.join(cfg.output_dir, 'bad_tracks.parquet'))
+        df.to_parquet(outname)
     
     x_variables = ['eta', 'phi', 'pt']
     x_labels = [r'$\eta$', r'$\phi$', r'$p_T$']
+    threshold = 9
     for xvar,xlabel in zip(x_variables, x_labels):
         _, ax = plt.subplots(1, 1, figsize=(6, 6))
-        sns.histplot(df[ (df['chi2/ndof'] < 100) & (df['chi2/ndof'] > 0.1)],
-                    x=xvar, y='chi2/ndof', 
-                    log_scale=(False,True), ax=ax, cbar=True)
+        xmin, xmax = df[xvar].min(), df[xvar].max()
+        if xvar == 'pt':
+            xmin, xmax = 0, 10_000
+
+        ax.hist2d(
+            df[xvar], df['chi2/ndof'], 
+            bins=(100, 100), range=((xmin, xmax), (0.1, 100)),
+            norm=colors.LogNorm(), cmap="Blues"
+        )
+        add_yline(ax, threshold, (xmin, xmax), color='red', lw=2)
+        # sns.histplot(df[ (df['chi2/ndof'] < 100) & (df['chi2/ndof'] > 0.1)],
+        #             x=xvar, y='chi2/ndof', 
+        #             log_scale=(False,True), ax=ax, cbar=True)
         ax.set_xlabel(xlabel)
         ax.set_ylabel(r'$\chi^2$ / ndof')
         plt.savefig(os.path.join(cfg.output_dir, f'bad_tracks_chi2_vs_{xvar}.png'))

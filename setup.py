@@ -3,8 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 
-from setuptools import find_packages
-from setuptools import setup
+from setuptools import find_packages, setup
 
 description="Facility for accessing and visualizing tracking data"
 

@@ -1,0 +1,3 @@
+track_perf_path: /media/DataOcean/projects/tracking/integrateToAthena/run_21.9.26/Run100Evts/Results_GNN/tracks
+num_workers: 1
+output_dir: /media/DataOcean/projects/tracking/integrateToAthena/run_21.9.26/Run100Evts/Results_GNN/bad_tracks

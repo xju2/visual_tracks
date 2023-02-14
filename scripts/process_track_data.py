@@ -1,4 +1,11 @@
 #!/usr/bin/env python
+"""
+This script uses the io.reader to read the raw data (spacepoints, particles, etc)
+in the trackml, athena, or acts format and save them in numpy format.
+
+The reader will construct the true edges between spacepoints, label spacepoints
+by their truth information. 
+"""
 import os
 
 from multiprocessing import Pool

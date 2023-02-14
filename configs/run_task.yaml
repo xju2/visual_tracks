@@ -1,0 +1,12 @@
+defaults:
+  - _self_
+  - task: null # this is the default task
+  - paths: default.yaml
+  - extras: default.yaml
+  - hydra: default.yaml
+
+# task name, determines output directory path
+task_name: ""
+
+# tags to help you identify your experiments
+tags: []

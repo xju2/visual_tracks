@@ -44,7 +44,8 @@ def load_from_np(fname, edge_name='true_edges'):
 
 
 def dump_data(data):
-    ## data are those load from numpy array, i.e. hits, pids, true_edges, cells, particles
+    ## data are those load from numpy array, 
+    ## i.e. hits, pids, true_edges, cells, particles
     hits, pids, true_edges, cells, particles = data
     print("hits:", hits.shape)
     print("pids:", pids.shape)

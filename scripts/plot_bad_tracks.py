@@ -22,11 +22,9 @@ from omegaconf import DictConfig
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
-from acctrack.utils_plot import add_yline
+from acctrack.utils.utils_plot import add_yline
 
-def analyze_tracks(
-        trk_perf_fname: str,
-         ) -> pd.DataFrame:
+def read_track_perf_file(trk_perf_fname: str) -> pd.DataFrame:
     column_names = ["idx", "chi2/ndof", 'px', 'py', 'pz',
                     'pt', 'd0', 'z0', 'charge', 'qoverp']
     
@@ -39,7 +37,7 @@ def analyze_tracks(
     df['eta'] = -np.log(np.tan(df['theta']/2.))
 
     fiducial_cuts = (df['z0'].abs() < 200) & (df['d0'].abs() < 2) \
-        & (df['pt'] > 900 & (df['pt'] < 10_000))
+        & (df['pt'] >= 1000 & (df['pt'] < 10_000))
     df = df[fiducial_cuts]
 
     return df
@@ -62,7 +60,8 @@ def plot_bad_tracks(cfg: DictConfig) -> None:
     else:
         print(f"Output file {outname} does not exist. Will be created.")    
         with ThreadPoolExecutor(max_workers=cfg.num_workers) as executor:
-            futures = [executor.submit(analyze_tracks, os.path.join(track_perf_path, event_file)) \
+            futures = [executor.submit(
+                read_track_perf_file, os.path.join(track_perf_path, event_file)) \
                     for event_file in event_files]
 
             dfs = [future.result() for future in concurrent.futures.as_completed(futures)]

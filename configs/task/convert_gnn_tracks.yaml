@@ -1,0 +1,6 @@
+
+_target_: acctrack.analyzer.prepare_gnn_tracks_for_fitting/PrepareGnnTracksForFitting
+  matching_file: /path/to/matching_file
+  matching_rdo_file:  /path/to/matching_rdo_file
+  rdo_file: /path/to/rdo_file
+  output_dir: /path/to/output_dir

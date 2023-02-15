@@ -15,10 +15,9 @@ class PlotBadTracks(TaskBase):
                  track_perf_path, 
                  output_dir, 
                  num_workers: int = 1,
-                 force_overwrite: bool = False, 
-                 name: str ="PlotBadTracks", **kwags
+                 force_overwrite: bool = False, **kwags
                  ) -> None:
-        super().__init__(name)
+        super().__init__()
         self.save_hyperparameters()
 
     @staticmethod
@@ -92,6 +91,5 @@ class PlotBadTracks(TaskBase):
             plt.savefig(os.path.join(output_dir, f'bad_tracks_chi2_vs_{xvar}.png'))
             plt.cla()
     
-    def run(self) -> bool:
+    def run(self) -> None:
         self.plot_bad_tracks()
-        return True

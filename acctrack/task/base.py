@@ -2,11 +2,10 @@ from acctrack.task.hparams_mixin import HyperparametersMixin
 
 class TaskHooks:
 
-    def run(self) -> bool:
+    def run(self) -> None:
         """Run the task"""
 
 
 class TaskBase(TaskHooks, HyperparametersMixin):
-    def __init__(self, name="TaskBase") -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.name = name

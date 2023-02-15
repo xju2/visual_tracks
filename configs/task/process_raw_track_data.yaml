@@ -1,0 +1,6 @@
+_target_: acctrack.task.process_raw_track_data.ProcessRawTrackData
+out_dir: 
+num_workers: 1
+reader: 
+  _target_: acctrack.io.reader.trackml.TrackMLReader
+  basedir: ""

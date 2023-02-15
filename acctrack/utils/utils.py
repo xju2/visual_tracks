@@ -30,7 +30,7 @@ def task_wrapper(task_func: Callable) -> Callable:
         # execute the task
         try:
             start_time = time.time()
-            status = task_func(cfg=cfg)
+            task_func(cfg=cfg)
         except Exception as ex:
             log.exception("")  # save exception to `.log` file
             raise ex
@@ -41,8 +41,6 @@ def task_wrapper(task_func: Callable) -> Callable:
             close_loggers()  # close loggers (even if exception occurs so multirun won't fail)
 
         log.info(f"Output dir: {cfg.paths.output_dir}")
-
-        return status
 
     return wrap
 

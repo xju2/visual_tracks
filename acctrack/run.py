@@ -29,8 +29,6 @@ def main_function(cfg: DictConfig) -> None:
     for task in tasks:
         task.run()
 
-    return True
-
 
 @hydra.main(config_path=root / "configs", config_name="run_task.yaml", version_base="1.2")
 def main(cfg: DictConfig) -> None:

@@ -1,5 +1,5 @@
+"""Process the raw tracking data and save them to numpy files for training NNs."""
 import os
-from pathlib import Path
 
 from acctrack.task.base import TaskBase
 

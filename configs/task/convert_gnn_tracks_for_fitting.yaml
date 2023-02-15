@@ -1,0 +1,7 @@
+_target_: acctrack.task.convert_gnn_tracks_for_fitting.ConvertGNNTracksForFitting
+evtid_matching_fname: /path/to/matching_file
+rdo_matching_fname:  /path/to/matching_rdo_file
+gnn_track_fname: /path/to/rdo_file
+process_file_path: str,
+output_dir: /path/to/output_dir
+num_workers: 2

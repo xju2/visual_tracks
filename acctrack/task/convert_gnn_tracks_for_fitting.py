@@ -28,9 +28,8 @@ class ConvertGNNTracksForFitting(TaskBase):
             self.hparams.evtid_matching_fname, sep='\t', header=None, 
             names=["evtID","orgEvtID","rdoEvtID","rdoNum"])
         
-        logger.info("rdo event IDs\n")
+        logger.info("rdo event IDs")
         logger.info(", ".join([str(x) for x in self.evt_info.rdoEvtID.values.tolist()]))
-        logger.info("\n")
 
         self.evtid_map = dict(zip(
             self.evt_info.evtID.values.tolist(),

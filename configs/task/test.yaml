@@ -1,0 +1,3 @@
+_target_: acctrack.task.test_task.TestTask
+arg1: 42
+arg2: 3.14

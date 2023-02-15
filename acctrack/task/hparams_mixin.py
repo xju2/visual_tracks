@@ -73,7 +73,7 @@ def clean_namespace(hparams: MutableMapping) -> None:
     del_attrs = [k for k, v in hparams.items() if not is_picklable(v)]
 
     for k in del_attrs:
-        log.warn(f"attribute '{k}' removed from hparams because it cannot be pickled")
+        log.warning(f"attribute '{k}' removed from hparams because it cannot be pickled")
         del hparams[k]
 
 

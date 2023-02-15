@@ -1,7 +1,9 @@
 import time
 import warnings
 from pathlib import Path
-from typing import  Callable
+from typing import  Callable, List, Any
+
+import hydra
 from omegaconf import DictConfig
 
 from acctrack.utils import pylogger, rich_utils
@@ -28,7 +30,7 @@ def task_wrapper(task_func: Callable) -> Callable:
         # execute the task
         try:
             start_time = time.time()
-            metric_dict, object_dict = task_func(cfg=cfg)
+            status = task_func(cfg=cfg)
         except Exception as ex:
             log.exception("")  # save exception to `.log` file
             raise ex
@@ -40,7 +42,7 @@ def task_wrapper(task_func: Callable) -> Callable:
 
         log.info(f"Output dir: {cfg.paths.output_dir}")
 
-        return metric_dict, object_dict
+        return status
 
     return wrap
 
@@ -80,8 +82,28 @@ def save_file(path: str, content: str) -> None:
         file.write(content)
 
 
-
 def close_loggers() -> None:
     """Makes sure all loggers closed properly (prevents logging failure during multirun)."""
 
     log.info("Closing loggers...")
+
+
+def instantiate_tasks(task_cfg: DictConfig) -> List[Any]:
+    """Instantiates all tasks from config file."""
+
+    tasks = []
+    if not task_cfg:
+        log.warning("Task config is empty!")
+        return []
+    
+    if not isinstance(task_cfg, DictConfig):
+        raise TypeError("Task config must be a DictConfig!")
+    
+    if "_target_" in task_cfg:
+        tasks.append(hydra.utils.instantiate(task_cfg))
+    else:
+        for _, t_conf in task_cfg.items():
+            if isinstance(t_conf, DictConfig) and "_target_" in t_conf:
+                tasks.append(hydra.utils.instantiate(t_conf))
+
+    return tasks

@@ -5,4 +5,5 @@ from acctrack.utils.utils import (
     extras,
     save_file,
     task_wrapper,
+    instantiate_tasks,
 )

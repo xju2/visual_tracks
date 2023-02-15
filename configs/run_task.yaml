@@ -7,6 +7,3 @@ defaults:
 
 # task name, determines output directory path
 task_name: ""
-
-# tags to help you identify your experiments
-tags: []

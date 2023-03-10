@@ -2,8 +2,7 @@
 
 from acctrack.io import MeasurementData
 
-
-class BaseReader:
+class BaseMeasurementDataReader:
     """Base class for IO."""
 
     def __init__(self, basedir, name="BaseReader"):

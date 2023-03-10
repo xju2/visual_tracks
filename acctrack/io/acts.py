@@ -14,14 +14,14 @@ import glob
 from typing import Any
 
 from acctrack.io import MeasurementData
-from acctrack.io.base import BaseReader
-from acctrack.io.utils import make_true_edges
+from acctrack.io.base import BaseMeasurementDataReader
+from acctrack.io.utils_feature_store import make_true_edges
 
 import numpy as np
 import pandas as pd
 
 
-class ActsReader(BaseReader):
+class ActsReader(BaseMeasurementDataReader):
     def __init__(self, basedir, spname='spacepoint', name="ActsReader"):
         super().__init__(basedir, name)
         self.spname = spname

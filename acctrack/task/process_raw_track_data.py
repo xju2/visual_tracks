@@ -3,12 +3,12 @@ import os
 
 from acctrack.task.base import TaskBase
 
-from acctrack.io.base import BaseReader
-from acctrack.io.utils import save_to_np, load_from_np, dump_data
+from acctrack.io.base import BaseMeasurementDataReader
+from acctrack.io.utils_feature_store import save_to_np, load_from_np, dump_data
 from acctrack.viewer import viewer
 
 class ProcessRawTrackData(TaskBase):
-    def __init__(self, reader: BaseReader, out_dir: str, 
+    def __init__(self, reader: BaseMeasurementDataReader, out_dir: str, 
                  check: bool = False, 
                  num_workers: int = 1, 
                  **kwargs) -> None:

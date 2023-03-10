@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import itertools
 
-from gnn4itk.io import MeasurementData
+from acctrack.io import MeasurementData
 
 
 def true_edges(hits):

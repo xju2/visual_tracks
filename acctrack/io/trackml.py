@@ -15,9 +15,9 @@ import re
 import numpy as np
 import pandas as pd
 
-from acctrack.io.base import BaseReader
+from acctrack.io.base import BaseMeasurementDataReader
 from acctrack.io import MeasurementData
-from acctrack.io.utils import make_true_edges
+from acctrack.io.utils_feature_store import make_true_edges
 from acctrack.io.trackml_cell_info import add_cluster_shape
 from acctrack.io.trackml_detector import load_detector
 
@@ -41,7 +41,7 @@ def remove_noise_hits(hits):
     hits = hits[hits.hit_type != 'noise']
     return hits
 
-class TrackMLReader(BaseReader):
+class TrackMLReader(BaseMeasurementDataReader):
     def __init__(self, basedir, name="TrackMLReader") -> None:
         super().__init__(basedir, name)
 

@@ -1,4 +1,4 @@
-from acctrack.task.hparams_mixin import HyperparametersMixin
+from acctrack.hparams_mixin import HyperparametersMixin
 
 class TaskHooks:
 

@@ -25,9 +25,9 @@ class ConvertGNNTracksForFitting(TaskBase):
 
     def read_evt_info(self):
         self.evt_info = pd.read_csv(
-            self.hparams.evtid_matching_fname, sep='\t', header=None, 
-            names=["evtID","orgEvtID","rdoEvtID","rdoNum"])
-        
+            self.hparams.evtid_matching_fname, sep='\t', header=None,
+            names=["evtID", "orgEvtID", "rdoEvtID", "rdoNum"])
+
         logger.info("rdo event IDs")
         logger.info(", ".join([str(x) for x in self.evt_info.rdoEvtID.values.tolist()]))
 
@@ -35,12 +35,12 @@ class ConvertGNNTracksForFitting(TaskBase):
             self.evt_info.evtID.values.tolist(),
             self.evt_info.rdoEvtID.values.tolist()))
 
-        
+
     def read_rdo_info(self):
         self.rdo_info = pd.read_csv(
             self.hparams.rdo_matching_fname, sep='\t', header=None,
-            names=["rdoFileName","rodNum"])
-        
+            names=["rdoFileName", "rodNum"])
+
 
     def read_gnn_tracks(self):
         self.recoTracks = [dict() for _ in range(self.hparams.max_evts)]
@@ -50,15 +50,15 @@ class ConvertGNNTracksForFitting(TaskBase):
         with pd.HDFStore(file_reco, mode='r') as reader:
             for eventId in range(self.hparams.max_evts):
                 for m in methods:
-                    dataname = "/event{0}/{1}/reco_tracks".format(eventId,m)
+                    dataname = "/event{0}/{1}/reco_tracks".format(eventId, m)
                     if dataname not in reader:
                         continue
                     df_trks = reader.get(dataname)
                     # Remove -1 that are placeholders for empty hit
                     trks = df_trks.values
-                    trks = [list(filter(lambda x: x !=-1, trk)) for trk in trks]
+                    trks = [list(filter(lambda x: x != -1, trk)) for trk in trks]
 
-                    self.recoTracks[eventId].update( { m : trks })
+                    self.recoTracks[eventId].update({m : trks})
 
     def write_one_evt(self, evtid: int):
         """Write track candidates to a file for a given event ID"""
@@ -66,14 +66,14 @@ class ConvertGNNTracksForFitting(TaskBase):
             real_evtid = self.evtid_map[evtid]
         except KeyError:
             logger.error("event id {} not there".format(evtid))
-            return 
-        
+            return
+
         outdir = Path(self.hparams.output_dir)
         outname = f"tracks_{real_evtid}.txt"
         if not outdir.exists():
             outdir.mkdir(parents=True)
 
-        outname = outdir / outname 
+        outname = outdir / outname
 
         # read processed data info
         # use that to sort the track candidates
@@ -83,7 +83,7 @@ class ConvertGNNTracksForFitting(TaskBase):
             print(f"{evtid} does not have processed data")
             return
         truth = pd.read_csv(truth_fname)
-                
+
         methods = ['singleCutFilter', 'wrangler']
         with open(outname, 'w') as f:
             for method in methods:

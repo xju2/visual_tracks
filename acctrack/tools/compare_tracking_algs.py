@@ -250,11 +250,13 @@ class TrackAlgComparator(HyperparametersMixin):
 
         # perform the comparison to find disjoint tracks
         # for reader and other_reader
-        _, _, disjoint_tracks = self.compare_track_contents()
         self.reverse_comparison = True
         _, _, disjoint_other_tracks = self.compare_track_contents()
+
         # reset the flag
         self.reverse_comparison = False
+        _, _, disjoint_tracks = self.compare_track_contents()
+
 
         # compare the two disjoint track lists
         num_disjoints = len(disjoint_tracks)
@@ -337,4 +339,4 @@ class TrackAlgComparator(HyperparametersMixin):
         plt.legend()
         plt.show()
 
-        return good_disjoints, other_good_disjoints
+        return good_disjoints, other_good_disjoints, matched_particles, other_matched_particles

@@ -5,7 +5,7 @@ from __future__ import print_function
 
 from setuptools import find_packages, setup
 
-description="Facility for accessing and visualizing tracking data"
+description = "Facility for accessing and visualizing tracking data"
 
 setup(
     name="acctrack",

@@ -22,3 +22,16 @@ def load_data(filename: Union[str, Path]):
             return pickle.load(f)
     else:
         return pd.read_parquet(filename)
+
+def read_or_create(outname: Union[str, Path] = None, overwrite: bool = False):
+    """Decorator for reading or creating data"""
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            if Path(outname).exists() and not overwrite:
+                data = load_data(outname)
+            else:
+                data = func(*args, **kwargs)
+                save_data(data, outname)
+            return data
+        return wrapper
+    return decorator

@@ -35,13 +35,13 @@ particle_branch_names = [particle_branch_prefix + col for col in particle_column
 # cluster branch names
 cluster_branch_prefix = "CL"
 cluster_columns = [
-    "index", "hardware",
+    "index",
     "x", "y", "z",
     "barrel_endcap", "layer_disk", "eta_module", "phi_module", "side",
     "pixel_count", "charge_count",
     "loc_eta", "loc_phi",
     "loc_direction1", "loc_direction2", "loc_direction3",
-    "global_eta", "global_phi",
+    "glob_eta", "glob_phi",
     "eta_angle", "phi_angle", "norm_x", "norm_y", "norm_z",
 ]
 cluster_branch_names = [cluster_branch_prefix + col for col in cluster_columns]
@@ -60,3 +60,6 @@ spacepoint_columns = [
     "CL1_index", "CL2_index",
 ]
 spacepoint_branch_names = [spacepoint_branch_prefix + col for col in spacepoint_columns]
+
+all_branches = particle_branch_names + cluster_branch_names + ["CLhardware"]\
+    + cluster_link_branch_names + spacepoint_branch_names

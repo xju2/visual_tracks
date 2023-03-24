@@ -8,9 +8,9 @@ from acctrack.io.utils_feature_store import save_to_np, load_from_np, dump_data
 from acctrack.viewer import viewer
 
 class ProcessRawTrackData(TaskBase):
-    def __init__(self, reader: BaseMeasurementDataReader, out_dir: str, 
-                 check: bool = False, 
-                 num_workers: int = 1, 
+    def __init__(self, reader: BaseMeasurementDataReader, out_dir: str,
+                 check: bool = False,
+                 num_workers: int = 1,
                  **kwargs) -> None:
         super().__init__()
         self.save_hyperparameters(ignore=["reader"])
@@ -22,9 +22,9 @@ class ProcessRawTrackData(TaskBase):
         check_only = self.hparams.check
         filename = os.path.join(output_dir, str(evtid))
         if check_only:
-            data = load_from_np( filename + ".npz")
+            data = load_from_np(filename + ".npz")
             dump_data(data)
-            viewer.view_graph(data[0], data[1], data[2], outname=filename+"_graph.png")
+            viewer.view_graph(data[0], data[1], data[2], outname=filename + "_graph.png")
         else:
             data = self.reader(evtid)
             save_to_np(filename, data)

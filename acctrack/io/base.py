@@ -19,7 +19,7 @@ class BaseMeasurementDataReader:
         """Read one event from the input directory."""
         raise NotImplementedError
 
-    def  __call__(self, evtid: int = None):
+    def __call__(self, evtid: int = None):
         return self.read(evtid)
 
     def __str__(self):

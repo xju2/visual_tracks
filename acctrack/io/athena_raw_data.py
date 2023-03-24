@@ -19,34 +19,14 @@ The dumped data includes:
 They are add the same postfix: "{}_evt{index}-{run_number}_{event_number}.txt"
 
 """
-from typing import List, Tuple, Union
+from typing import List, Tuple, Callable, Union, Any
 from pathlib import Path
-import pickle
 
 import re
 import pandas as pd
 
 from acctrack.io import utils_athena_raw as reader_utils
-
-def save_data(df, filename: Union[str, Path]):
-    """Save the dataframe to a file"""
-    if isinstance(df, pd.DataFrame):
-        df.to_parquet(filename, compression='gzip')
-    else:
-        with open(filename, "wb") as f:
-            pickle.dump(df, f)
-
-def load_data(filename: Union[str, Path]):
-    """Load the dataframe from a file"""
-    if isinstance(filename, Path):
-        filename = str(filename)
-
-    if filename.endswith(".pkl"):
-        with open(filename, "rb") as f:
-            return pickle.load(f)
-    else:
-        return pd.read_parquet(filename)
-
+from acctrack.io import utils as io_utils
 
 class AthenaRawDataReader:
     def __init__(self, inputdir, output_dir=None, overwrite=False, name="AthenaRawDataReader"):
@@ -107,15 +87,16 @@ class AthenaRawDataReader:
         namepatch = self.getnamepatch(evtid, run_number, event_number)
         return self.outdir / "{}{}.{}".format(prefix, namepatch, suffix)
 
-    def read_wrap(self, read_fn, prefix, evtid=None, run_number=None, event_number=None, **kwargs):
+    def read_wrap(self, read_fn: Callable[[str], Union[pd.DataFrame, Any]],
+                  prefix, evtid=None, run_number=None, event_number=None, **kwargs):
         """Read the data from the input directory"""
         outname = Path(self.get_outname(prefix, evtid, run_number, event_number, **kwargs))
         if outname.exists() and not self.overwrite:
-            return load_data(outname)
+            return io_utils.load_data(outname)
 
         filename = self.get_filename(prefix, evtid, run_number, event_number)
         df = read_fn(filename)
-        save_data(df, outname)
+        io_utils.save_data(df, outname)
         return df
 
     def read_track_candidates(self, evtid=None, run_number=None, event_number=None) -> List[List[int]]:

@@ -1,5 +1,6 @@
 from pathlib import Path
 import uproot
+from functools import partial
 
 import pandas as pd
 import numpy as np
@@ -19,7 +20,6 @@ class AthenaRawRootReader:
 
         self.name = name
         self.overwrite = overwrite
-        self.global_evtid = 0
         self.tree_name = "GNN4ITk"
 
 
@@ -43,7 +43,7 @@ class AthenaRawRootReader:
         file = uproot.open(filename)
         tree_name = "GNN4ITk"
         tree = file[tree_name]
-        self.global_evtid = self.file_evtid[file_idx]
+        evtid = self.file_evtid[file_idx]
 
         self.tree = tree
         for batch in tree.iterate(step_size=1, filter_name=utils_raw_root.all_branches, library="np"):
@@ -57,7 +57,7 @@ class AthenaRawRootReader:
             particle_ids = utils_raw_csv.get_particle_ids(particles)
             particles.insert(0, "particle_id", particle_ids)
 
-            self._save("particles", particles)
+            self._save("particles", particles, evtid)
 
 
             # read clusters
@@ -76,7 +76,6 @@ class AthenaRawRootReader:
             clusters['cluster_id'] = clusters['cluster_id'] - 1
             clusters = clusters.astype({"hardware": "str", "barrel_endcap": "int32"})
             # read truth links for each cluster
-            cluster_match = []
             subevent_name, barcode_name = utils_raw_root.cluster_link_branch_names
             matched_subevents = batch[subevent_name][0].tolist()
             matched_barcodes = batch[barcode_name][0].tolist()
@@ -92,7 +91,7 @@ class AthenaRawRootReader:
             cluster_matched = pd.DataFrame(matched_info, columns=["cluster_id", "subevent", "barcode"])
             cluster_matched["particle_id"] = utils_raw_csv.get_particle_ids(cluster_matched)
             clusters = clusters.merge(cluster_matched, on="cluster_id", how="left")
-            self._save("clusters", clusters)
+            self._save("clusters", clusters, evtid)
 
 
             # read spacepoints
@@ -101,7 +100,7 @@ class AthenaRawRootReader:
             spacepoints = spacepoints.rename(columns={
                 "index": "hit_id", "CL1_index": "cluster_index_1", "CL2_index": "cluster_index_2"
             })
-            self._save("spacepoints", spacepoints)
+            self._save("spacepoints", spacepoints, evtid)
 
             pixel_hits = spacepoints[spacepoints["cluster_index_2"] == -1]
             strip_hits = spacepoints[spacepoints["cluster_index_2"] != -1]
@@ -119,30 +118,27 @@ class AthenaRawRootReader:
                                   ])
             truth = utils_raw_csv.merge_spacepoints_clusters(truth, clusters)
             truth = utils_raw_csv.add_region_labels(truth, region_labels)
-            self._save("truth", truth)
-            break
-
-            self.global_evtid += 1
+            self._save("truth", truth, evtid)
+            evtid += 1
         return tree
 
-    def _save(self, outname: str, df: pd.DataFrame):
-        outname = self.get_outname(outname)
+    def _save(self, outname: str, df: pd.DataFrame, evtid: int):
+        outname = self.get_outname(outname, evtid)
         if outname.exists() and not self.overwrite:
             return
         df.to_parquet(outname, compression="gzip")
 
-    def _read(self, outname: str) -> pd.DataFrame:
-        outname = self.get_outname(outname)
+    def _read(self, outname: str, evtid: int) -> pd.DataFrame:
+        outname = self.get_outname(outname, evtid)
         if not outname.exists():
             return None
         return pd.read_parquet(outname)
 
-    def get_outname(self, outname: str) -> Path:
-        return self.outdir / f"event{self.global_evtid:06d}-{outname}.parquet"
+    def get_outname(self, outname: str, evtid: int) -> Path:
+        return self.outdir / f"event{evtid:06d}-{outname}.parquet"
 
     def read(self, evtid: int = 0):
-        self.global_evtid = evtid
-        self.clusters = self._read("clusters")
-        self.particles = self._read("particles")
-        self.spacepoints = self._read("spacepoints")
-        self.truth = self._read("truth")
+        self.clusters = self._read("clusters", evtid)
+        self.particles = self._read("particles", evtid)
+        self.spacepoints = self._read("spacepoints", evtid)
+        self.truth = self._read("truth", evtid)

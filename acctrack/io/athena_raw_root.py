@@ -118,8 +118,6 @@ class AthenaRawRootReader:
                                   (6, {"hardware": "STRIP", "barrel_endcap": 2})
                                   ])
             truth = utils_raw_csv.merge_spacepoints_clusters(truth, clusters)
-            print(np.unique(truth["hardware"]))
-            print(np.unique(truth["barrel_endcap"]))
             truth = utils_raw_csv.add_region_labels(truth, region_labels)
             self._save("truth", truth)
             break

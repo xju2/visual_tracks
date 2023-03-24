@@ -140,7 +140,7 @@ def truth_match_clusters(pixel_hits, strip_hits, clusters):
     with shared truth particle_id
     """
     pixel_clusters = pixel_hits.merge(
-        clusters[['cluster_id', 'particle_id',]],
+        clusters[['cluster_id', 'particle_id']],
         left_on='cluster_index_1', right_on='cluster_id', how='left').drop("cluster_id", axis=1)
 
     strip_clusters = strip_hits.merge(

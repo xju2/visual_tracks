@@ -85,15 +85,15 @@ class AthenaRawRootReader:
                 "x": "cluster_x",
                 "y": "cluster_y",
                 "z": "cluster_z",
-                "pixel_count": "cell_count",
-                "charge_count": "cell_val",
+                "pixel_count": "count",
                 "loc_eta": "leta",
                 "loc_phi": "lphi",
-                "loc_direction1": "lx",
-                "loc_direction2": "ly",
-                "loc_direction3": "lz",
-                "glob_eta": "geta",
-                "glob_phi": "gphi",
+                "loc_direction1": "localDir0",
+                "loc_direction2": "localDir1",
+                "loc_direction3": "localDir2",
+                "Jan_loc_direction1": "lengthDir0",
+                "Jan_loc_direction2": "lengthDir1",
+                "Jan_loc_direction3": "lengthDir2",
                 "moduleID": "module_id"   # <TODO, not a correct module id>
             })
             clusters['cluster_id'] = clusters['cluster_id'] - 1
@@ -150,7 +150,7 @@ class AthenaRawRootReader:
             json.dump(file_map, f)
         return tree
 
-    def _save(self, outname: str, df: pd.DataFrame, evtid: int):
+    def _save(self, outname: str, df: pd.DataFrame, evtid: int) -> bool:
         outname = self.get_outname(outname, evtid)
         if outname.exists() and not self.overwrite:
             return True
@@ -167,8 +167,15 @@ class AthenaRawRootReader:
     def get_outname(self, outname: str, evtid: int) -> Path:
         return self.outdir / f"event{evtid:06d}-{outname}.parquet"
 
-    def read(self, evtid: int = 0):
+    def read(self, evtid: int = 0) -> bool:
         self.clusters = self._read("clusters", evtid)
         self.particles = self._read("particles", evtid)
         self.spacepoints = self._read("spacepoints", evtid)
         self.truth = self._read("truth", evtid)
+        if any([x is None for x in [
+                self.clusters, self.particles, self.spacepoints, self.truth]]):
+            print("event {evtid} are not processed.")
+            print("please run `read_file()` first!")
+            return False
+        else:
+            return True

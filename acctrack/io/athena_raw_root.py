@@ -48,12 +48,19 @@ class AthenaRawRootReader:
 
         self.tree = tree
         file_map: Dict[int, Tuple[int, int]] = {}
+        out_filenames = ["particles", "clusters", "spacepoints", "truth"]
         for batch in tree.iterate(step_size=1, filter_name=utils_raw_root.all_branches, library="np"):
             # the index 0 is because we have step_size = 1
             # read event info
             run_number = batch["run_number"][0]
             event_number = batch["event_number"][0]
             file_map[evtid] = (run_number, event_number)
+
+            # check if all files exists. If yes, skip the event
+            is_file_exist = [self._save(x, None, evtid) for x in out_filenames]
+            if not self.overwrite and all(is_file_exist):
+                evtid += 1
+                continue
 
             # read particles
             particle_arrays = [batch[x][0] for x in utils_raw_root.particle_branch_names]
@@ -146,8 +153,10 @@ class AthenaRawRootReader:
     def _save(self, outname: str, df: pd.DataFrame, evtid: int):
         outname = self.get_outname(outname, evtid)
         if outname.exists() and not self.overwrite:
-            return
-        df.to_parquet(outname, compression="gzip")
+            return True
+        if df is not None:
+            df.to_parquet(outname, compression="gzip")
+        return False
 
     def _read(self, outname: str, evtid: int) -> pd.DataFrame:
         outname = self.get_outname(outname, evtid)

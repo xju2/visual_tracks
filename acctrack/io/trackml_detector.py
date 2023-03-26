@@ -14,7 +14,7 @@ def load_detector(detector_path):
         with open(detector_preproc, 'rb') as f:
             detector = pickle.load(f)
         print("Detector loaded.")
-    except:
+    except FileNotFoundError:
         print("Failed to load preprocessed detector. Building...")
         detector = pd.read_csv(detector_path)
         detector = preprocess_detector(detector)
@@ -34,17 +34,17 @@ def preprocess_detector(detector):
 
 
 def determine_array_size(detector):
-    max_v, max_l, max_m = (0,0,0)
+    max_v, max_l, max_m = (0, 0, 0)
     unique_vols = detector.volume_id.unique()
-    max_v = max(unique_vols)+1
+    max_v = max(unique_vols) + 1
     for v in unique_vols:
-        vol = detector.loc[detector['volume_id']==v]
+        vol = detector.loc[detector['volume_id'] == v]
         unique_layers = vol.layer_id.unique()
-        max_l = max(max_l, max(unique_layers)+1)
+        max_l = max(max_l, max(unique_layers) + 1)
         for l in unique_layers:
-            lay = vol.loc[vol['layer_id']==l]
+            lay = vol.loc[vol['layer_id'] == l]
             unique_modules = lay.module_id.unique()
-            max_m = max(max_m, max(unique_modules)+1)
+            max_m = max(max_m, max(unique_modules) + 1)
     return max_v, max_l, max_m
 
 class Detector_Rotations(object):
@@ -60,7 +60,7 @@ class Detector_Rotations(object):
         return self.rot
 
     def _init_rotation_array(self):
-        self.rot =  np.zeros((self.max_v, self.max_l, self.max_m, 3, 3))
+        self.rot = np.zeros((self.max_v, self.max_l, self.max_m, 3, 3))
 
     def _extract_all_rotations(self):
         for i, r in self.detector.iterrows():
@@ -69,13 +69,11 @@ class Detector_Rotations(object):
             self.rot[v, l, m] = rot
 
     def _extract_rotation_matrix(self, mod) :
-      '''
-      Extract the rotation matrix from module dataframe
-      '''
-      r = np.matrix([[ mod.rot_xu.item(),mod.rot_xv.item(),mod.rot_xw.item()],
-                     [mod.rot_yu.item(),mod.rot_yv.item(),mod.rot_yw.item()],
-                     [mod.rot_zu.item(),mod.rot_zv.item(),mod.rot_zw.item()]])
-      return r
+        '''Extract the rotation matrix from module dataframe'''
+        r = np.matrix([[mod.rot_xu.item(), mod.rot_xv.item(), mod.rot_xw.item()],
+                      [mod.rot_yu.item(), mod.rot_yv.item(), mod.rot_yw.item()],
+                      [mod.rot_zu.item(), mod.rot_zv.item(), mod.rot_zw.item()]])
+        return r
 
 class Detector_Thicknesses(object):
     def __init__(self, detector):
@@ -90,7 +88,7 @@ class Detector_Thicknesses(object):
         return self.all_t
 
     def _init_thickness_array(self):
-        self.all_t =  np.zeros((self.max_v, self.max_l, self.max_m))
+        self.all_t = np.zeros((self.max_v, self.max_l, self.max_m))
 
     def _extract_all_thicknesses(self):
         for i, r in self.detector.iterrows():
@@ -111,7 +109,7 @@ class Detector_Pixel_Size(object):
         return self.all_s
 
     def _init_size_array(self):
-        self.all_s =  np.zeros((self.max_v, self.max_l, self.max_m, 2))
+        self.all_s = np.zeros((self.max_v, self.max_l, self.max_m, 2))
 
     def _extract_all_size(self):
         for i, r in self.detector.iterrows():

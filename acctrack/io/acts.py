@@ -11,7 +11,6 @@ acts/event000001000-cells.csv
 import os
 import re
 import glob
-from typing import Any
 
 from acctrack.io import MeasurementData
 from acctrack.io.base import BaseMeasurementDataReader
@@ -34,20 +33,20 @@ class ActsReader(BaseMeasurementDataReader):
         pattern = "event([0-9]*)-{}.csv".format(spname)
         self.all_evtids = sorted([
             int(re.search(pattern, os.path.basename(x)).group(1).strip())
-                for x in all_evts])
+            for x in all_evts])
         print("total {} events in directory: {}".format(
             self.nevts, self.basedir))
 
 
     def read(self, evtid: int = None) -> MeasurementData:
         """Read one event from the input directory.
-        
+
         Return:
             MeasurementData
         """
         if (evtid is None or evtid < 1) and self.nevts > 0:
             evtid = self.all_evtids[0]
-        
+
         prefix = os.path.join(self.basedir, "event{:09d}".format(evtid))
         hit_fname = "{}-hits.csv".format(prefix)
         measurements_fname = "{}-measurements.csv".format(prefix)
@@ -58,7 +57,7 @@ class ActsReader(BaseMeasurementDataReader):
         # read hit files
         hits = pd.read_csv(hit_fname)
         hits = hits[hits.columns[:-1]]
-        hits = hits.reset_index().rename(columns = {'index':'hit_id'})
+        hits = hits.reset_index().rename(columns={'index': 'hit_id'})
 
         # read measurements, maps to hits, and spacepoints
         measurements = pd.read_csv(measurements_fname)
@@ -69,8 +68,8 @@ class ActsReader(BaseMeasurementDataReader):
         particles = pd.read_csv(p_name)
         pt = np.sqrt(particles.px**2 + particles.py**2)
         momentum = np.sqrt(pt**2 + particles.pz**2)
-        theta = np.arccos(particles.pz/momentum)
-        eta = -np.log(np.tan(0.5*theta))
+        theta = np.arccos(particles.pz / momentum)
+        eta = -np.log(np.tan(0.5 * theta))
         radius = np.sqrt(particles.vx**2 + particles.vy**2)
         particles = particles.assign(pt=pt, radius=radius, eta=eta)
 
@@ -78,16 +77,16 @@ class ActsReader(BaseMeasurementDataReader):
         cell_fname = '{}-cells.csv'.format(prefix)
         cells = pd.read_csv(cell_fname)
 
-        ## calculate cluster shape information
+        # calculate cluster shape information
         direction_count_u = cells.groupby(['hit_id']).channel0.agg(['min', 'max'])
         direction_count_v = cells.groupby(['hit_id']).channel1.agg(['min', 'max'])
         nb_u = direction_count_u['max'] - direction_count_u['min'] + 1
         nb_v = direction_count_v['max'] - direction_count_v['min'] + 1
         hit_cells = cells.groupby(['hit_id']).value.count().values
         hit_value = cells.groupby(['hit_id']).value.sum().values
-        ## as I don't access to the rotation matrix and the pixel pitches,
-        ## I can't calculate cluster's local/global position 
-        sp = sp.assign(len_u=nb_u, len_v=nb_v,cell_count=hit_cells,cell_val=hit_value)
+        # as I don't access to the rotation matrix and the pixel pitches,
+        # I can't calculate cluster's local/global position
+        sp = sp.assign(len_u=nb_u, len_v=nb_v, cell_count=hit_cells, cell_val=hit_value)
 
 
         sp_hits = sp.merge(meas2hits, on='measurement_id', how='left').merge(
@@ -101,13 +100,13 @@ class ActsReader(BaseMeasurementDataReader):
 
         sp_hits = sp_hits.assign(R=np.sqrt(
             (sp_hits.x - sp_hits.vx)**2
-            + (sp_hits.y - sp_hits.vy)**2 
+            + (sp_hits.y - sp_hits.vy)**2
             + (sp_hits.z - sp_hits.vz)**2))
         sp_hits = sp_hits.sort_values('R').reset_index(
             drop=True).reset_index(drop=False)
 
         edges = make_true_edges(sp_hits)
-        
+
         data = MeasurementData(
             hits, measurements, meas2hits,
             sp_hits, particles, edges, os.path.abspath(prefix))

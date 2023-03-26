@@ -1,7 +1,7 @@
 import time
 import warnings
 from pathlib import Path
-from typing import  Callable, List, Any
+from typing import Callable, List, Any
 
 import hydra
 from omegaconf import DictConfig
@@ -93,10 +93,10 @@ def instantiate_tasks(task_cfg: DictConfig) -> List[Any]:
     if not task_cfg:
         log.warning("Task config is empty!")
         return []
-    
+
     if not isinstance(task_cfg, DictConfig):
         raise TypeError("Task config must be a DictConfig!")
-    
+
     if "_target_" in task_cfg:
         tasks.append(hydra.utils.instantiate(task_cfg))
     else:

@@ -33,7 +33,7 @@ class RecoTrkxReader:
         submission.drop_duplicates(subset=['hit_id'], inplace=True)
         return submission
 
-    
+
 class ACTSTrkxReader:
     """Read reconstructed tracks dumped from the CKF method in ACTS"""
     def __init__(self, reco_track_path: str):
@@ -47,7 +47,7 @@ class ACTSTrkxReader:
         pattern = "event([0-9]*)-CKFtracks.csv"
         self.all_evtids = sorted([
             int(re.search(pattern, os.path.basename(x)).group(1).strip())
-                for x in all_files])
+            for x in all_files])
         print("Total {} events in directory: {}".format(
             self.nevts, self.path))
 

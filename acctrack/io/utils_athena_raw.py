@@ -67,6 +67,15 @@ def get_particle_ids(df) -> pd.Series:
     particle_ids = subevent + barcode.str.pad(width=max_length, fillchar='0')
     return particle_ids
 
+def get_particle_ids_int64(df) -> pd.Series:
+    barcode = df.barcode.astype(np.int64)
+    subevent = df.subevent.astype(np.int64)
+
+    # convert barcode to 7 digits
+    # max_length = 7
+    particle_ids = subevent * 10_000_000 + barcode
+    return particle_ids
+
 
 def read_true_track(filename):
     """Read fitted tracks information from a file."""
@@ -197,3 +206,29 @@ def merge_spacepoints_clusters(spacepoints, clusters):
         "hit_id", "cluster_index_1", "cluster_index_2", "particle_id"]).fillna(-1)
 
     return spacepoints
+
+
+def particles_of_interest(particles):
+    """
+    Keep only particles of interest.
+    """
+    results = particles[(particles.eta.abs() < 4)
+                        & (particles.radius < 260)
+                        & (particles.charge.abs() > 0)]
+
+    return results
+
+def add_module_id(hits, module_lookup):
+    """
+    Add the module ID to the hits dataframe
+    """
+    if "module_id" in hits:
+        return hits
+    cols_to_merge = ['hardware', 'barrel_endcap', 'layer_disk', 'eta_module', 'phi_module', "ID"]
+    merged_hits = hits.merge(module_lookup[cols_to_merge + ["ID"]], on=cols_to_merge, how='left')
+    merged_hits = merged_hits.rename(columns={"ID": "module_id"})
+
+    assert hits.shape[0] == merged_hits.shape[0], "Merged hits dataframe has different number of rows - possibly missing modules from lookup"
+    assert hits.shape[1] + 1 == merged_hits.shape[1], "Merged hits dataframe has different number of columns"
+
+    return merged_hits

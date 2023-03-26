@@ -1,6 +1,7 @@
+from typing import Dict, Tuple
 from pathlib import Path
 import uproot
-from functools import partial
+import json
 
 import pandas as pd
 import numpy as np
@@ -46,8 +47,13 @@ class AthenaRawRootReader:
         evtid = self.file_evtid[file_idx]
 
         self.tree = tree
+        file_map: Dict[int, Tuple[int, int]] = {}
         for batch in tree.iterate(step_size=1, filter_name=utils_raw_root.all_branches, library="np"):
             # the index 0 is because we have step_size = 1
+            # read event info
+            run_number = batch["run_number"][0]
+            event_number = batch["event_number"][0]
+            file_map[evtid] = (run_number, event_number)
 
             # read particles
             particle_arrays = [batch[x][0] for x in utils_raw_root.particle_branch_names]
@@ -56,7 +62,7 @@ class AthenaRawRootReader:
             # convert barcode to 7 digits
             particle_ids = utils_raw_csv.get_particle_ids(particles)
             particles.insert(0, "particle_id", particle_ids)
-
+            particles = utils_raw_csv.particles_of_interest(particles)
             self._save("particles", particles, evtid)
 
 
@@ -71,7 +77,17 @@ class AthenaRawRootReader:
                 "index": "cluster_id",
                 "x": "cluster_x",
                 "y": "cluster_y",
-                "z": "cluster_z"
+                "z": "cluster_z",
+                "pixel_count": "cell_count",
+                "charge_count": "cell_val",
+                "loc_eta": "leta",
+                "loc_phi": "lphi",
+                "loc_direction1": "lx",
+                "loc_direction2": "ly",
+                "loc_direction3": "lz",
+                "glob_eta": "geta",
+                "glob_phi": "gphi",
+                "moduleID": "module_id"   # <TODO, not a correct module id>
             })
             clusters['cluster_id'] = clusters['cluster_id'] - 1
             clusters = clusters.astype({"hardware": "str", "barrel_endcap": "int32"})
@@ -91,6 +107,7 @@ class AthenaRawRootReader:
             cluster_matched = pd.DataFrame(matched_info, columns=["cluster_id", "subevent", "barcode"])
             cluster_matched["particle_id"] = utils_raw_csv.get_particle_ids(cluster_matched)
             clusters = clusters.merge(cluster_matched, on="cluster_id", how="left")
+
             self._save("clusters", clusters, evtid)
 
 
@@ -120,6 +137,10 @@ class AthenaRawRootReader:
             truth = utils_raw_csv.add_region_labels(truth, region_labels)
             self._save("truth", truth, evtid)
             evtid += 1
+
+        # save file map
+        with open(self.outdir / f"filemap_${file_idx}.json", "w") as f:
+            json.dump(file_map, f)
         return tree
 
     def _save(self, outname: str, df: pd.DataFrame, evtid: int):

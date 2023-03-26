@@ -26,7 +26,7 @@ __all__ = ['TrackMLReader', 'select_barrel_hits', 'remove_noise_hits']
 def select_barrel_hits(hits):
     """Select barrel hits.
     """
-    vlids = [(8,2), (8,4), (8,6), (8,8), (13,2), (13,4), (13,6), (13,8), (17,2), (17,4)]
+    vlids = [(8, 2), (8, 4), (8, 6), (8, 8), (13, 2), (13, 4), (13, 6), (13, 8), (17, 2), (17, 4)]
     n_det_layers = len(vlids)
     # Select barrel layers and assign convenient layer number [0-9]
     vlid_groups = hits.groupby(['volume_id', 'layer_id'])
@@ -53,11 +53,11 @@ class TrackMLReader(BaseMeasurementDataReader):
         pattern = "event([0-9]*)-hits.csv"
         self.all_evtids = sorted([
             int(re.search(pattern, os.path.basename(x)).group(1).strip())
-                for x in all_evts])
+            for x in all_evts])
 
         print("total {} events in directory: {}".format(
             self.nevts, self.basedir))
-        
+
         detector_path = os.path.join(self.basedir, "../detectors.csv")
         _, self.detector = load_detector(detector_path)
 
@@ -84,22 +84,22 @@ class TrackMLReader(BaseMeasurementDataReader):
         # read truth info about hits and particles
         truth = pd.read_csv(truth_fname)
         particles = pd.read_csv(particle_fname)
-        ### add dummy particle information for noise hits
-        ### whose particle ID is zero.
-        ### particle_id,vx,vy,vz,px,py,pz,q,nhits
+        # add dummy particle information for noise hits
+        # whose particle ID is zero.
+        # particle_id,vx,vy,vz,px,py,pz,q,nhits
         particles.loc[len(particles.index)] = [0, 0, 0, 0, 0.00001, 0.00001, 0.00001, 0, 0]
         truth.merge(particles, on='particle_id', how='left')
         truth = truth.assign(pt=np.sqrt(truth.px**2 + truth.py**2))
 
 
-        hits = hits.merge(truth[['hit_id', 'particle_id',
-            'vx', 'vy', 'vz', 'pt', 'weight']], on='hit_id')
+        hits = hits.merge(truth[['hit_id', 'particle_id', 'vx', 'vy', 'vz', 'pt', 'weight']],
+                          on='hit_id')
 
         true_edges = make_true_edges(hits)
         cells = pd.read_csv(cell_fname)
         hits = add_cluster_shape(hits, cells, self.detector)
 
-        hits = hits.assign(R=np.sqrt( (hits.x - hits.vx)**2 + (hits.y - hits.vy)**2 + (hits.z - hits.vz)**2 ))
+        hits = hits.assign(R=np.sqrt((hits.x - hits.vx)**2 + (hits.y - hits.vy)**2 + (hits.z - hits.vz)**2))
         hits = hits.sort_values('R').reset_index(drop=True).reset_index(drop=False)
 
         data = MeasurementData(
@@ -112,4 +112,3 @@ class TrackMLReader(BaseMeasurementDataReader):
             event_file=os.path.abspath(prefix),
         )
         return data
-

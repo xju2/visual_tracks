@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 
 
 def plot(track: np.ndarray,
-        figsize=(15,12),
-        fontsize=16,
-        minorsize=14,
-        outname=None, **kwargs) -> None:
+         figsize=(15, 12),
+         fontsize=16,
+         minorsize=14,
+         outname=None, **kwargs) -> None:
     """Plot a track from different views"""
 
     if track.shape[1] != 3:
@@ -30,38 +30,39 @@ def plot(track: np.ndarray,
     ax4 = fig.add_subplot(224, projection='polar')
 
 
-    ## plot r vs z
+    # plot r vs z
     ax1.plot(z, r, **kwargs)
     ax1.set_xlabel("z [m]", fontsize=fontsize)
     ax1.set_ylabel("r [m]", fontsize=fontsize)
     ax1.tick_params(axis='both', which='major', labelsize=minorsize)
 
-    ## plot x vs y
+    # plot x vs y
     ax2.plot(x, y, **kwargs)
     ax2.set_xlabel("x [m]", fontsize=fontsize)
     ax2.set_ylabel("y [m]", fontsize=fontsize)
     ax2.tick_params(axis='both', which='major', labelsize=minorsize)
 
-    ## plot 3D
+    # plot 3D
     ax3.plot3D(x, y, z, **kwargs)
     ax3.set_xlabel("x [m]", fontsize=fontsize)
     ax3.set_ylabel("y [m]", fontsize=fontsize)
     ax3.set_zlabel("z [m]", fontsize=fontsize)
     ax3.tick_params(axis='both', which='major', labelsize=minorsize)
     ax3.scatter(x, y, z, **kwargs)
-    
-    ## plot x vs y in polar coordinates
+
+    # plot x vs y in polar coordinates
     ax4.plot(x, y, **kwargs)
     ax4.set_xlabel("x [m]", fontsize=fontsize)
     ax4.set_ylabel("y [m]", fontsize=fontsize)
     ax4.tick_params(axis='both', which='major', labelsize=minorsize)
 
 
-def view_graph(hits: np.ndarray, pids: np.ndarray, edges: np.ndarray,
-    outname: str = None,
-    markersize: int = 20,
-    max_tracks: int = 10,
-    with_legend: bool = False):
+def view_graph(
+        hits: np.ndarray, pids: np.ndarray, edges: np.ndarray,
+        outname: str = None,
+        markersize: int = 20,
+        max_tracks: int = 10,
+        with_legend: bool = False):
     """View a graph of hits and edges. If max_tracks is too large,
     we only plot the nodes and edges with the same color.
 
@@ -76,8 +77,8 @@ def view_graph(hits: np.ndarray, pids: np.ndarray, edges: np.ndarray,
     unique_particles = np.unique(pids)
     do_only_nodes = False
 
-    if max_tracks is not None and max_tracks < len(unique_particles)-1:
-        sel_pids = unique_particles[1:max_tracks+1]
+    if max_tracks is not None and max_tracks < len(unique_particles) - 1:
+        sel_pids = unique_particles[1:max_tracks + 1]
     else:
         sel_pids = unique_particles[1:]
         print("only plot the nodes!")
@@ -94,22 +95,23 @@ def view_graph(hits: np.ndarray, pids: np.ndarray, edges: np.ndarray,
         r = X[:, 0]
         phi = X[:, 1]
         z = X[:, 2]
-        x = r*np.cos(phi)
-        y = r*np.sin(phi)
-        return x,y,z,r,phi
+        x = r * np.cos(phi)
+        y = r * np.sin(phi)
+        return x, y, z, r, phi
 
     _, axs = plt.subplots(1, 2, figsize=(13, 6))
     if not do_only_nodes:
         for pid in sel_pids:
-            sel_hits = hits[pids==pid]
+            sel_hits = hits[pids == pid]
             x, y, z, r, _ = get_hit_info(sel_hits)
             axs[0].scatter(x, y, s=markersize, label=str(pid))
             axs[1].scatter(z, r, s=markersize)
 
-        if with_legend: axs[0].legend(fontsize=10)
+        if with_legend:
+            axs[0].legend(fontsize=10)
 
-        sel_edges = edges[:, np.isin(edges[0], all_sel_hit_idx) \
-            & np.isin(edges[1], all_sel_hit_idx)]
+        sel_edges = edges[:, np.isin(edges[0], all_sel_hit_idx)
+                          & np.isin(edges[1], all_sel_hit_idx)]
         print("selected {:,} edges from total {:,} true edges".format(
             sel_edges.shape[1], edges.shape[1]))
 

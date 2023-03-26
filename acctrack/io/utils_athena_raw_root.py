@@ -16,10 +16,16 @@ def create_arrays(branch_arrays: Dict[str, np.ndarray]):
     return all_arrays
 
 
-# define particle branch names
+# define branch names
 # they are taken from
 # https://gitlab.cern.ch/gnn4itkteam/athena/-/blob/21.9.26-root-and-csv-files-from-RDO-v1/Tracking/TrkDumpAlgs/src/ROOT2CSVconverter.cpp
 
+
+# event info
+event_branch_names = ["run_number", "event_number"]
+
+
+# particles
 particle_branch_prefix = "Part_"
 # "vParentID", "vParentBarcode" are not used.
 particle_columns = [
@@ -35,7 +41,7 @@ particle_branch_names = [particle_branch_prefix + col for col in particle_column
 # cluster branch names
 cluster_branch_prefix = "CL"
 cluster_columns = [
-    "index",
+    "index", "moduleID",
     "x", "y", "z",
     "barrel_endcap", "layer_disk", "eta_module", "phi_module", "side",
     "pixel_count", "charge_count",
@@ -61,5 +67,6 @@ spacepoint_columns = [
 ]
 spacepoint_branch_names = [spacepoint_branch_prefix + col for col in spacepoint_columns]
 
-all_branches = particle_branch_names + cluster_branch_names + ["CLhardware"]\
+all_branches = event_branch_names + particle_branch_names \
+    + cluster_branch_names + ["CLhardware"] \
     + cluster_link_branch_names + spacepoint_branch_names

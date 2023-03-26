@@ -13,10 +13,10 @@ from acctrack.utils import pylogger
 log = pylogger.get_pylogger(__name__)
 
 def print_config_tree(
-    cfg: DictConfig,
-    print_order: Sequence[str] = ("paths", "task"),
-    resolve: bool = False,
-    save_to_file: bool = False) -> None:
+        cfg: DictConfig,
+        print_order: Sequence[str] = ("paths", "task"),
+        resolve: bool = False,
+        save_to_file: bool = False) -> None:
     """Prints content of DictConfig using Rich library and its tree structure.
     Args:
         cfg (DictConfig): Configuration composed by Hydra.

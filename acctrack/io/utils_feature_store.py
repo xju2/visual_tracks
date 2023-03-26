@@ -24,10 +24,10 @@ def save_to_np(outname, data: MeasurementData):
         cells = hits[cluster_shape_features].values
     else:
         cells = None
-        
+
     np.savez_compressed(
         outname,
-        x=hits[['r', 'phi', 'z']].values/scales,
+        x=hits[['r', 'phi', 'z']].values / scales,
         pid=hits['particle_id'].values,
         hid=hits['hit_id'].values,
         true_edges=edges,
@@ -44,21 +44,21 @@ def load_from_np(fname, edge_name='true_edges'):
 
 
 def dump_data(data):
-    ## data are those load from numpy array, 
-    ## i.e. hits, pids, true_edges, cells, particles
+    # data are those load from numpy array,
+    # i.e. hits, pids, true_edges, cells, particles
     hits, pids, true_edges, cells, particles = data
     print("hits:", hits.shape)
     print("pids:", pids.shape)
     print("true_edges:", true_edges.shape)
     print("cells:", cells.shape)
     print("particles:", particles.shape)
-    ## plot the edges
+    # <TODO> plot the edges
 
 
 def make_true_edges(hits):
-    hit_list = hits.groupby(['particle_id', 'geometry_id'],
-        sort=False)['index'].agg(lambda x: list(x)).groupby(
-            level=0).agg(lambda x: list(x))
+    hit_list = hits.groupby(['particle_id', 'geometry_id'], sort=False)['index'] \
+        .agg(lambda x: list(x)).groupby(level=0) \
+        .agg(lambda x: list(x))
 
     e = []
     for row in hit_list.values:

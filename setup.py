@@ -17,15 +17,12 @@ setup(
     license="MIT",
     packages=find_packages(),
     install_requires=[
-        "numpy",
-        "pandas",
-        "matplotlib",
     ],
     extras_require={},
     classifiers=[
         "Programming Language :: Python :: 3",
     ],
     scripts=[
-        "scripts/process_track_data.py",
+        "scripts/split_files_for_nn.py",
     ],
 )

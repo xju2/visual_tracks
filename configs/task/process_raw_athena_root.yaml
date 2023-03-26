@@ -1,6 +1,7 @@
 _target_: acctrack.task.process_athena_root.ProcessRawAthenaRoot
-num_workers: 4
+num_workers: 2
 reader:
   _target_: acctrack.io.athena_raw_root.AthenaRawRootReader
-  inputdir: "/media/DataOcean/data/ITk/BugFixedSamples"
-  overwrite: True
+  # inputdir: "/media/DataOcean/data/ITk/BugFixedSamples"
+  inputdir: "/media/DataOcean/data/ITk/ReDumped2022Data"
+  overwrite: False

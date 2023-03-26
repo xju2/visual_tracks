@@ -47,6 +47,7 @@ cluster_columns = [
     "pixel_count", "charge_count",
     "loc_eta", "loc_phi",
     "loc_direction1", "loc_direction2", "loc_direction3",
+    "Jan_loc_direction1", "Jan_loc_direction2", "Jan_loc_direction3",
     "glob_eta", "glob_phi",
     "eta_angle", "phi_angle", "norm_x", "norm_y", "norm_z",
 ]

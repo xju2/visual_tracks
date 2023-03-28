@@ -32,7 +32,7 @@ class AthenaRawRootReader:
         self.file_evtid = [0]
         for filename in self.root_files:
             num_entries = list(uproot.num_entries(str(filename) + ":" + self.tree_name))[0][-1]
-            start_evtid = sum(self.file_evtid) + num_entries
+            start_evtid = self.file_evtid[-1] + num_entries
             self.file_evtid.append(start_evtid)
         print(f"{self.inputdir} contains  {self.num_files} files and total {self.file_evtid[-1]} events.")
 

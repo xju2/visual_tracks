@@ -1,6 +1,6 @@
 _target_: acctrack.task.process_athena_root.ProcessRawAthenaRoot
-num_workers: 5
+num_workers: 32
 reader:
   _target_: acctrack.io.athena_raw_root.AthenaRawRootReader
   inputdir: "/global/homes/x/xju/m3443/data/ITk-upgrade/BugFixedNewTtbarSamples/v1"
-  overwrite: True
+  overwrite: False

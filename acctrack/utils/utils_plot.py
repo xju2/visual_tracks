@@ -22,3 +22,15 @@ def add_mean_std(array: np.ndarray,
                 color=color, fontsize=fontsize)
         return ax
     return ax
+
+def set_xaxis(ax):
+    ax.minorticks_on()
+    axsecond = ax.secondary_xaxis('top')
+    axsecond.minorticks_on()
+    axsecond.tick_params(axis='x', which='both', direction='in', labeltop=False)
+    return ax
+
+def create_figure() -> plt.Figure:
+    fig, ax = plt.subplots(1, 1, figsize=(6, 4))
+    set_xaxis(ax)
+    return fig, ax

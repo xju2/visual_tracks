@@ -1,8 +1,10 @@
+from acctrack.io.base import BaseTrackDataReader
 from acctrack.io.acts import ActsReader
 from acctrack.io.athena_data import AthenaDataReader
 from acctrack.io.trackml import TrackMLReader
 
 __all__ = [
+    "BaseTrackDataReader"
     'ActsReader', 'AthenaDataReader',
     'AthenaRawDataReader',
     'TrackMLReader'

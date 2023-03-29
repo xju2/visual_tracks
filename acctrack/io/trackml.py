@@ -15,8 +15,7 @@ import re
 import numpy as np
 import pandas as pd
 
-from acctrack.io.base import BaseMeasurementDataReader
-from acctrack.io import MeasurementData
+from acctrack.io.base import BaseTrackDataReader
 from acctrack.io.utils_feature_store import make_true_edges
 from acctrack.io.trackml_cell_info import add_cluster_shape
 from acctrack.io.trackml_detector import load_detector
@@ -41,7 +40,7 @@ def remove_noise_hits(hits):
     hits = hits[hits.hit_type != 'noise']
     return hits
 
-class TrackMLReader(BaseMeasurementDataReader):
+class TrackMLReader(BaseTrackDataReader):
     def __init__(self, basedir, name="TrackMLReader") -> None:
         super().__init__(basedir, name)
 
@@ -62,7 +61,7 @@ class TrackMLReader(BaseMeasurementDataReader):
         _, self.detector = load_detector(detector_path)
 
 
-    def read(self, evtid: int = None) -> MeasurementData:
+    def read(self, evtid: int = None) -> bool:
         """Read one event from the input directory"""
 
         if (evtid is None or evtid < 1) and self.nevts > 0:
@@ -102,13 +101,7 @@ class TrackMLReader(BaseMeasurementDataReader):
         hits = hits.assign(R=np.sqrt((hits.x - hits.vx)**2 + (hits.y - hits.vy)**2 + (hits.z - hits.vz)**2))
         hits = hits.sort_values('R').reset_index(drop=True).reset_index(drop=False)
 
-        data = MeasurementData(
-            hits=None,
-            measurements=None,
-            meas2hits=None,
-            spacepoints=hits,
-            particles=particles,
-            true_edges=true_edges,
-            event_file=os.path.abspath(prefix),
-        )
-        return data
+        self.spacepoints = hits
+        self.particles = particles
+        self.true_edges = true_edges
+        return True

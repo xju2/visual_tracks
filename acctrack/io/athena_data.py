@@ -2,15 +2,11 @@
 
 import os
 import re
-import glob
-from typing import Any
-
 import numpy as np
 import pandas as pd
 import itertools
 
-from acctrack.io import MeasurementData
-
+from acctrack.io.base import BaseTrackDataReader
 
 def true_edges(hits):
     hit_list = hits.groupby(
@@ -31,18 +27,20 @@ def true_edges(hits):
     layerless_true_edges = np.array(e).T
     return layerless_true_edges
 
-class AthenaDFReader:
+class AthenaDFReader(BaseTrackDataReader):
     """Athena dataframe reader"""
-    def __init__(self, csv_dir, postfix='csv',
+    def __init__(self, inputdir: str,
+                 output_dir: str = None,
+                 overwrite: bool = None,
+                 name: str = "AthenaDFReader",
+                 postfix='csv',
                  selections: bool = False,
-                 pt_cut: float = 0.3,  # in GeV
-                 *args, **kwargs
-                 ) -> None:
-        self.csv_dir = csv_dir
+                 pt_cut: float = 0.3):
+        super().__init__(inputdir, output_dir, overwrite, name)
+
         self.postfix = postfix
 
-        all_evts = glob.glob(os.path.join(
-            self.csv_dir, "event*-truth.{}".format(postfix)))
+        all_evts = self.inputdir.glob("event*-truth.{}".format(postfix))
         self.nevts = len(all_evts)
         pattern = f"event([0-9]*)-truth.{postfix}"
         self.all_evtids = sorted([
@@ -61,7 +59,6 @@ class AthenaDFReader:
         postfix = self.postfix
         filename = f"{prefix}.{postfix}"
 
-
         if postfix == 'csv':
             df = pd.read_csv(filename)
         elif postfix == 'pkl':
@@ -70,7 +67,7 @@ class AthenaDFReader:
             raise ValueError(f"Unknown postfix: {postfix}")
         return df
 
-    def read(self, evtid=None):
+    def read(self, evtid=None) -> bool:
         """Read one event from the input directory
 
         Return:
@@ -120,14 +117,10 @@ class AthenaDFReader:
         good_hits = good_hits.sort_values('R')
         edges = true_edges(good_hits)
 
-        data = MeasurementData(
-            hits=None, measurements=None,
-            meas2hits=None, spacepoints=truth, particles=particles,
-            true_edges=edges, event_file=prefix)
-        return data
+        self.truth = truth
+        self.particles = particles
+        self.true_edges = edges
+        return True
 
     def __call__(self, evtid, *args: Any, **kwds: Any) -> Any:
         return self.read(evtid)
-
-
-# <TODO: move functions in process_uitls.py to here>

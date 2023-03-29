@@ -12,33 +12,34 @@ import os
 import re
 import glob
 
-from acctrack.io import MeasurementData
-from acctrack.io.base import BaseMeasurementDataReader
+from acctrack.io.base import BaseTrackDataReader
 from acctrack.io.utils_feature_store import make_true_edges
 
 import numpy as np
 import pandas as pd
 
 
-class ActsReader(BaseMeasurementDataReader):
-    def __init__(self, basedir, spname='spacepoint', name="ActsReader"):
-        super().__init__(basedir, name)
+class ActsReader(BaseTrackDataReader):
+    def __init__(self, inputdir: str, output_dir: str = None,
+                 overwrite: bool = True, name: str = "ActsReader",
+                 spname: str = 'spacepoint'):
+        super().__init__(inputdir, output_dir, overwrite, name)
         self.spname = spname
 
         # count how many events in the directory
         all_evts = glob.glob(os.path.join(
             self.basedir, "event*-{}.csv".format(spname)))
 
-        self.nevts = len(all_evts)
         pattern = "event([0-9]*)-{}.csv".format(spname)
         self.all_evtids = sorted([
             int(re.search(pattern, os.path.basename(x)).group(1).strip())
             for x in all_evts])
+        self.nevts = len(self.all_evtids)
         print("total {} events in directory: {}".format(
             self.nevts, self.basedir))
 
 
-    def read(self, evtid: int = None) -> MeasurementData:
+    def read(self, evtid: int = None) -> bool:
         """Read one event from the input directory.
 
         Return:
@@ -106,8 +107,9 @@ class ActsReader(BaseMeasurementDataReader):
             drop=True).reset_index(drop=False)
 
         edges = make_true_edges(sp_hits)
+        self.particles = particles
+        self.clusters = measurements
+        self.spacepoints = sp_hits
+        self.true_edges = edges
 
-        data = MeasurementData(
-            hits, measurements, meas2hits,
-            sp_hits, particles, edges, os.path.abspath(prefix))
-        return data
+        return True

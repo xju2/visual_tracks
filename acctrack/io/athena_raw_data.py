@@ -25,19 +25,16 @@ from pathlib import Path
 import re
 import pandas as pd
 
+from acctrack.io.base import BaseTrackDataReader
 from acctrack.io import utils_athena_raw as reader_utils
 from acctrack.io import utils as io_utils
 
-class AthenaRawDataReader:
-    def __init__(self, inputdir, output_dir=None, overwrite=False, name="AthenaRawDataReader"):
-        self.name = name
-        self.overwrite = overwrite
-        self.basedir = Path(inputdir)
-        if not self.basedir.exists() or not self.basedir.is_dir():
-            raise FileNotFoundError("Cannot find the directory: {}".format(inputdir))
-
-        self.outdir = Path(output_dir) if output_dir is not None else self.basedir / "processed_data"
-        self.outdir.mkdir(parents=True, exist_ok=True)
+class AthenaRawDataReader(BaseTrackDataReader):
+    def __init__(self, inputdir,
+                 output_dir=None,
+                 overwrite=False,
+                 name="AthenaRawDataReader"):
+        super().__init__(inputdir, output_dir, overwrite, name)
 
         # find number of events in the directory
         # and extract the event id, run number, and event number.
@@ -48,7 +45,6 @@ class AthenaRawDataReader:
         def find_evt_info(x):
             matched = regrex.search(x.name)
             if matched is None:
-                # print("Error: cannot find event id in file: {}".format(x))
                 return None
             evtid = int(matched.group(1).strip())
             run_number = int(matched.group(2).strip())
@@ -238,7 +234,7 @@ class AthenaRawDataReader:
             "detailedtracktruth", evtid, run_number, event_number)
         return self.detailed_matching
 
-    def read(self, evtid=None, run_number=None, event_number=None) -> None:
+    def _read(self, evtid=None, run_number=None, event_number=None) -> None:
         """Read all the data from the input directory
 
         Return:
@@ -252,6 +248,12 @@ class AthenaRawDataReader:
         self.read_track_candidates_clusters(*info)
         self.read_true_track(*info)
         self.read_detailed_matching(*info)
+
+    def read(self, evtid: int = 0) -> bool:
+        if evtid < 0 or evtid >= self.nevts:
+            return False
+        self._read(*(self.all_evtids[evtid]))
+        return True
 
     def match_to_truth(self) -> pd.DataFrame:
         """Match a reco track to a truth track
@@ -280,4 +282,4 @@ if __name__ == '__main__':
     reader = AthenaRawDataReader(basedir)
     print(reader)
     print(reader.all_evtids)
-    print(reader())
+    print(reader.read())

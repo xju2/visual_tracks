@@ -1,28 +1,22 @@
 from typing import Dict, Tuple
 from pathlib import Path
-import uproot
+
 import json
+import uproot
 
 import pandas as pd
 import numpy as np
 
 from acctrack.io import utils_athena_raw_root as utils_raw_root
 from acctrack.io import utils_athena_raw as utils_raw_csv
+from acctrack.io.base import BaseTrackDataReader
 
 
-class AthenaRawRootReader:
-    def __init__(self, inputdir, output_dir=None, overwrite=True, name="AthenaRawRootReader"):
-        self.inputdir = Path(inputdir)
-        if not self.inputdir.exists() or not self.inputdir.is_dir():
-            raise FileNotFoundError(f"Input directory {self.inputdir} does not exist or is not a directory.")
-
-        self.outdir = Path(output_dir) if output_dir else self.inputdir / "processed_data"
-        self.outdir.mkdir(parents=True, exist_ok=True)
-
-        self.name = name
-        self.overwrite = overwrite
+class AthenaRawRootReader(BaseTrackDataReader):
+    def __init__(self, inputdir, output_dir=None,
+                 overwrite=True, name="AthenaRawRootReader"):
+        super().__init__(inputdir, output_dir, overwrite, name)
         self.tree_name = "GNN4ITk"
-
 
         # find all files in inputdir
         self.root_files = list(self.inputdir.glob("*.root"))

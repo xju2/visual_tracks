@@ -23,6 +23,7 @@ from typing import List, Tuple, Callable, Union, Any
 from pathlib import Path
 
 import re
+import numpy as np
 import pandas as pd
 
 from acctrack.io.base import BaseTrackDataReader
@@ -38,7 +39,7 @@ class AthenaRawDataReader(BaseTrackDataReader):
 
         # find number of events in the directory
         # and extract the event id, run number, and event number.
-        all_evts = list(self.basedir.glob("spacepoints_*.txt"))
+        all_evts = list(self.inputdir.glob("spacepoints_*.txt"))
         pattern = "spacepoints_evt([0-9]*)-([0-9]*)_([0-9]*).*.txt"
         regrex = re.compile(pattern)
 
@@ -55,7 +56,7 @@ class AthenaRawDataReader(BaseTrackDataReader):
         self.all_evtids = [x for x in self.all_evtids if x is not None]
         self.nevts = len(self.all_evtids)
         print("Total {} events in directory: {}".format(
-            self.nevts, self.basedir))
+            self.nevts, self.inputdir))
 
     def getnamepatch(self, evtid, run_number, event_number):
         """Get the postfix for the given event id or event number"""
@@ -76,7 +77,7 @@ class AthenaRawDataReader(BaseTrackDataReader):
     def get_filename(self, prefix, evtid, run_number, event_number, suffix="txt") -> str:
         """Get the input filename for the given event id or event number"""
         namepatch = self.getnamepatch(evtid, run_number, event_number)
-        return self.basedir / "{}{}.{}".format(prefix, namepatch, suffix)
+        return self.inputdir / "{}{}.{}".format(prefix, namepatch, suffix)
 
     def get_outname(self, prefix, evtid, run_number, event_number, suffix="parquet", **kwargs) -> str:
         """Get the filename for the given event id or event number"""
@@ -257,7 +258,7 @@ class AthenaRawDataReader(BaseTrackDataReader):
 
     def match_to_truth(self) -> pd.DataFrame:
         """Match a reco track to a truth track
-        only if the contents of the reco track are from the truth track.
+        only if all reco track contents are from the truth track.
         """
         detailed = self.detailed_matching
         all_matched_to_truth = detailed[
@@ -270,11 +271,16 @@ class AthenaRawDataReader(BaseTrackDataReader):
         print(f"All matched to truth {self.name}: ",
               num_all_matched_to_truth, len(detailed), frac_all_matched_to_truth)
 
+        # Check that each reco track is matched to only one truth track
+        _, counts = np.unique(all_matched_to_truth.trkid.values, return_counts=True)
+        assert np.all(counts == 1), "Some reco tracks are matched to multiple truth tracks"
+
         self.tracks_matched_to_truth = all_matched_to_truth
+
         return all_matched_to_truth
 
     def __str__(self) -> str:
-        return "{} reads from {}.".format(self.name, self.basedir)
+        return "{} reads from {}.".format(self.name, self.inputdir)
 
 
 if __name__ == '__main__':

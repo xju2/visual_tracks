@@ -2,8 +2,6 @@
 * read feature files that used for embedding.
 * save measurement data for training embedding.
 """
-from acctrack.io import MeasurementData
-
 import numpy as np
 import itertools
 
@@ -17,7 +15,7 @@ cluster_shape_features = [
     'len_u', 'len_v', 'cell_count', 'cell_val',
 ]
 
-def save_to_np(outname, data: MeasurementData):
+def save_to_np(outname, data):
     hits = data.spacepoints
     edges = data.true_edges
     if "len_u" in hits.columns:

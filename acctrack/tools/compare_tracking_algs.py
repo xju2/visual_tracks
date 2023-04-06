@@ -339,4 +339,6 @@ class TrackAlgComparator(HyperparametersMixin):
         plt.legend()
         plt.show()
 
-        return good_disjoints, other_good_disjoints, matched_particles, other_matched_particles
+        return (disjoint_other_tracks, disjoint_other_tracks,
+                good_disjoints, other_good_disjoints,
+                matched_particles, other_matched_particles)

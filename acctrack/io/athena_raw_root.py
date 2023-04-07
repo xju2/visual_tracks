@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 from pathlib import Path
 
 import json
@@ -16,18 +16,26 @@ class AthenaRawRootReader(BaseTrackDataReader):
     def __init__(self, inputdir, output_dir=None,
                  overwrite=True, name="AthenaRawRootReader"):
         super().__init__(inputdir, output_dir, overwrite, name)
-        self.tree_name = "GNN4ITk"
 
         # find all files in inputdir
-        self.root_files = list(self.inputdir.glob("*.root"))
-        self.num_files = len(self.root_files)
+        self.root_files = sorted(list(self.inputdir.glob("*.root")))
+
+        self.tree_name = "GNN4ITk"
 
         # now we read all files and determine the starting event id for each file
         self.file_evtid = [0]
         for filename in self.root_files:
-            num_entries = list(uproot.num_entries(str(filename) + ":" + self.tree_name))[0][-1]
+            try:
+                num_entries = list(uproot.num_entries(str(filename) + ":" + self.tree_name))[0][-1]
+            except OSError:
+                print(f"Error reading file: {filename}")
+                self.root_files.remove(filename)
+                continue
+
             start_evtid = self.file_evtid[-1] + num_entries
             self.file_evtid.append(start_evtid)
+
+        self.num_files = len(self.root_files)
         print(f"{self.inputdir} contains  {self.num_files} files and total {self.file_evtid[-1]} events.")
 
     def read_file(self, file_idx: int = 0) -> uproot.models.TTree:
@@ -35,9 +43,9 @@ class AthenaRawRootReader(BaseTrackDataReader):
             print(f"File index {file_idx} is out of range. Max index is {self.num_files - 1}")
             return None
         filename = self.root_files[file_idx]
+        print(f"Reading file: {filename}")
         file = uproot.open(filename)
-        tree_name = "GNN4ITk"
-        tree = file[tree_name]
+        tree = file[self.tree_name]
         evtid = self.file_evtid[file_idx]
 
         self.tree = tree
@@ -173,3 +181,33 @@ class AthenaRawRootReader(BaseTrackDataReader):
             return False
         else:
             return True
+
+    def get_event_info(self, file_idx: int = 0) -> pd.DataFrame:
+        if file_idx >= self.num_files:
+            print(f"File index {file_idx} is out of range. Max index is {self.num_files - 1}")
+            return None
+
+        filename = self.root_files[file_idx]
+        print("reading event info from", filename)
+        with uproot.open(filename) as f:
+            tree = f[self.tree_name]
+            event_info = tree.arrays(utils_raw_root.event_branch_names, library="pd")
+            return event_info
+
+    def find_event(self, event_numbers: List[int]):
+        # we loop over all availabel root files
+        # check if the requrested event number is in the file
+        # if yes, we write down the file name and the event number
+        # if no, we continue to the next file
+
+        # event_number_map: Dict[int, str] = dict([(x, "") for x in event_numbers])
+        event_number_map: Dict[int, str] = {}
+
+        for root_file_idx in range(len(self.root_files)):
+            event_info = self.get_event_info(root_file_idx)
+            for event_number in event_numbers:
+                if event_number in event_info["event_number"].values:
+                    print(f"Event {event_number} is in file {self.root_files[root_file_idx]}")
+                    event_number_map[event_number] = self.root_files[root_file_idx]
+
+        return event_number_map

@@ -92,6 +92,10 @@ class ConvertGNNTracksForFitting(TaskBase):
         methods = ['singleCutFilter', 'wrangler']
         with open(outname, 'w') as f:
             for method in methods:
+                if method not in self.recoTracks[evtid]:
+                    print(f"no reco track for method {method} for event {evtid}")
+                    continue
+
                 for track in self.recoTracks[evtid][method]:
                     if truth is None:
                         f.write(','.join([str(i) for i in track]))

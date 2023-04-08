@@ -210,4 +210,7 @@ class AthenaRawRootReader(BaseTrackDataReader):
                     print(f"Event {event_number} is in file {self.root_files[root_file_idx]}")
                     event_number_map[event_number] = self.root_files[root_file_idx]
 
+                    self.read_file(root_file_idx)
+                    self.truth.to_csv(f"event{event_number:06d}-truth.csv")
+
         return event_number_map

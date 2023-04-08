@@ -5,6 +5,7 @@ import numpy as np
 
 from acctrack.task.base import TaskBase
 from acctrack.utils import get_pylogger
+from acctrack.io.athena_raw_root import AthenaRawRootReader
 
 logger = get_pylogger(__name__)
 
@@ -78,27 +79,33 @@ class ConvertGNNTracksForFitting(TaskBase):
         # read processed data info
         # use that to sort the track candidates
         processed_data_dir = Path(self.hparams.process_file_path)
-        truth_fname = processed_data_dir / f"event{evtid:09}-truth.csv"
-        if not truth_fname.exists():
-            print(f"{evtid} does not have processed data")
-            return
-        truth = pd.read_csv(truth_fname)
+        truth = None
+        if processed_data_dir.is_dir():
+            truth_fname = processed_data_dir / f"event{evtid:09}-truth.csv"
+            if not truth_fname.exists():
+                print(f"{evtid} does not have processed data, no sortting")
+            else:
+                truth = pd.read_csv(truth_fname)
+        else:
+            pass
 
         methods = ['singleCutFilter', 'wrangler']
         with open(outname, 'w') as f:
             for method in methods:
                 for track in self.recoTracks[evtid][method]:
-                    track_info = truth[truth['hit_id'].isin(track)]
+                    if truth is None:
+                        f.write(','.join([str(i) for i in track]))
+                        f.write("\n")
+                    else:
+                        track_info = truth[truth['hit_id'].isin(track)]
+                        # remove duplicated spacepoints
+                        track_info = track_info.drop_duplicates(subset='hit_id')
+                        # sort by r direction
+                        track_info['r'] = np.sqrt(track_info.x**2 + track_info.y**2)
+                        track_info = track_info.sort_values(by='r')
 
-                    # remove duplicated spacepoints
-                    track_info = track_info.drop_duplicates(subset='hit_id')
-
-                    # sort by r direction
-                    track_info['r'] = np.sqrt(track_info.x**2 + track_info.y**2)
-                    track_info = track_info.sort_values(by='r')
-
-                    f.write(','.join([str(i) for i in track_info.hit_id.values.tolist()]))
-                    f.write("\n")
+                        f.write(','.join([str(i) for i in track_info.hit_id.values.tolist()]))
+                        f.write("\n")
 
 
     def run(self) -> None:

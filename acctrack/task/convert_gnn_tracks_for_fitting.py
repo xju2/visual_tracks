@@ -5,7 +5,6 @@ import numpy as np
 
 from acctrack.task.base import TaskBase
 from acctrack.utils import get_pylogger
-from acctrack.io.athena_raw_root import AthenaRawRootReader
 
 logger = get_pylogger(__name__)
 
@@ -69,6 +68,8 @@ class ConvertGNNTracksForFitting(TaskBase):
             logger.error("event id {} not there".format(evtid))
             return
 
+        min_num_hits = 3
+
         outdir = Path(self.hparams.output_dir)
         outname = f"tracks_{real_evtid}.txt"
         if not outdir.exists():
@@ -97,6 +98,9 @@ class ConvertGNNTracksForFitting(TaskBase):
                     continue
 
                 for track in self.recoTracks[evtid][method]:
+                    if len(track) < min_num_hits:
+                        continue
+
                     if truth is None:
                         f.write(','.join([str(i) for i in track]))
                         f.write("\n")

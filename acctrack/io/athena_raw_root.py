@@ -13,6 +13,10 @@ from acctrack.io.base import BaseTrackDataReader
 
 
 class AthenaRawRootReader(BaseTrackDataReader):
+    """Read Raw ROOT files created from RDO files with the dumping file.
+    The code that creates the ROOT file can be found
+    https://gitlab.cern.ch/gnn4itkteam/athena/-/tree/21.9.26-root-and-csv-files-from-RDO-v2/Tracking/TrkDumpAlgs
+    """
     def __init__(self, inputdir, output_dir=None,
                  overwrite=True, name="AthenaRawRootReader"):
         super().__init__(inputdir, output_dir, overwrite, name)

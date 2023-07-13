@@ -15,23 +15,26 @@ class TrackGraphDataReader(BaseTrackDataReader):
         self.nevts = len(self.pyg_files)
 
         # get event ids.
-        pattern = "event(.*).pyg"
+        pattern = "event\[\[(.*)\]\].pyg"
         regrex = re.compile(pattern)
 
         def find_evt_info(x):
             matched = regrex.search(x.name)
             if matched is None:
                 return None
-            evtid = int(matched.group(1).strip())
+            evtid = int(matched.group(1).strip("'").strip("0"))
             return evtid
 
         self.all_evtids = sorted([find_evt_info(x) for x in self.pyg_files])
         print("Total {} events in directory: {}".format(
-            self.nevts, self.basedir))
+            self.nevts, self.inputdir))
 
     def read(self, evtid: int = 0) -> bool:
         """Read one event from the input directory."""
         filename = self.pyg_files[evtid]
         print("Reading file: {}".format(filename))
-        data = torch.load(filename, map_location='cpu')
+        data = torch.load(filename, map_location=torch.device("cpu"))
+
+        # particles
+
         return data

@@ -30,7 +30,9 @@ def set_xaxis(ax):
     axsecond.tick_params(axis='x', which='both', direction='in', labeltop=False)
     return ax
 
-def create_figure() -> plt.Figure:
+def create_figure(title: str = None) -> plt.Figure:
     fig, ax = plt.subplots(1, 1, figsize=(6, 4))
+    if title:
+        ax.set_title(title)
     set_xaxis(ax)
     return fig, ax

@@ -42,7 +42,7 @@ class AthenaRawRootReader(BaseTrackDataReader):
         self.num_files = len(self.root_files)
         print(f"{self.inputdir} contains  {self.num_files} files and total {self.file_evtid[-1]} events.")
 
-    def read_file(self, file_idx: int = 0) -> uproot.models.TTree:
+    def read_file(self, file_idx: int = 0, max_evts: int = -1) -> uproot.models.TTree:
         if file_idx >= self.num_files:
             print(f"File index {file_idx} is out of range. Max index is {self.num_files - 1}")
             return None
@@ -55,11 +55,17 @@ class AthenaRawRootReader(BaseTrackDataReader):
         self.tree = tree
         file_map: Dict[int, Tuple[int, int]] = {}
         out_filenames = ["particles", "clusters", "spacepoints", "truth"]
+        idx = 0
         for batch in tree.iterate(step_size=1, filter_name=utils_raw_root.all_branches, library="np"):
+            idx += 1
+            if max_evts > 0 and idx >= max_evts:
+                print(f"Reaching the maximum {max_evts} events. Stop.")
+                break
+
             # the index 0 is because we have step_size = 1
             # read event info
-            run_number = batch["run_number"][0]
-            event_number = batch["event_number"][0]
+            run_number = int(batch["run_number"][0])
+            event_number = int(batch["event_number"][0])
             file_map[evtid] = (run_number, event_number)
 
             # check if all files exists. If yes, skip the event
@@ -86,22 +92,7 @@ class AthenaRawRootReader(BaseTrackDataReader):
             cluster_columns = utils_raw_root.cluster_columns + ["hardware"]
             cluster_arrays.append(cluster_hardware)
             clusters = pd.DataFrame(dict(zip(cluster_columns, cluster_arrays)))
-            clusters = clusters.rename(columns={
-                "index": "cluster_id",
-                "x": "cluster_x",
-                "y": "cluster_y",
-                "z": "cluster_z",
-                "pixel_count": "count",
-                "loc_eta": "leta",
-                "loc_phi": "lphi",
-                "loc_direction1": "localDir0",
-                "loc_direction2": "localDir1",
-                "loc_direction3": "localDir2",
-                "Jan_loc_direction1": "lengthDir0",
-                "Jan_loc_direction2": "lengthDir1",
-                "Jan_loc_direction3": "lengthDir2",
-                "moduleID": "module_id"   # <TODO, not a correct module id>
-            })
+            clusters = clusters.rename(columns=utils_raw_root.branch_rename_map)
             clusters['cluster_id'] = clusters['cluster_id'] - 1
             clusters = clusters.astype({"hardware": "str", "barrel_endcap": "int32"})
             # read truth links for each cluster
@@ -152,7 +143,8 @@ class AthenaRawRootReader(BaseTrackDataReader):
             evtid += 1
 
         # save file map
-        with open(self.outdir / f"filemap_${file_idx}.json", "w") as f:
+        js_fname = f"filemap_{file_idx}.json"
+        with open(self.outdir / js_fname, "w") as f:
             json.dump(file_map, f)
         return tree
 

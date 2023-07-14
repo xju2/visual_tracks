@@ -15,11 +15,26 @@ def create_arrays(branch_arrays: Dict[str, np.ndarray]):
 
     return all_arrays
 
+branch_rename_map = {
+    "index": "cluster_id",
+    "x": "cluster_x",
+    "y": "cluster_y",
+    "z": "cluster_z",
+    "pixel_count": "pixel_count",
+    "loc_eta": "leta",
+    "loc_phi": "lphi",
+    "loc_direction1": "localDir0",
+    "loc_direction2": "localDir1",
+    "loc_direction3": "localDir2",
+    "Jan_loc_direction1": "lengthDir0",
+    "Jan_loc_direction2": "lengthDir1",
+    "Jan_loc_direction3": "lengthDir2",
+    "moduleID": "module_id"   # <TODO, not a correct module id>
+}
 
 # define branch names
 # they are taken from
 # https://gitlab.cern.ch/gnn4itkteam/athena/-/blob/21.9.26-root-and-csv-files-from-RDO-v1/Tracking/TrkDumpAlgs/src/ROOT2CSVconverter.cpp
-
 
 # event info
 event_branch_names = ["run_number", "event_number"]

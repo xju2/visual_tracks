@@ -1,13 +1,13 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 from pathlib import Path
 import pandas as pd
 
 class BaseTrackDataReader:
     """Base class for reading Tracking data"""
 
-    def __init__(self, inputdir: str, output_dir: str = None,
+    def __init__(self, inputdir: Union[str, Path], output_dir: str = None,
                  overwrite: bool = True, name="BaseTrackDataReader"):
-        self.inputdir = Path(inputdir)
+        self.inputdir = Path(inputdir) if isinstance(inputdir, str) else inputdir
         if not self.inputdir.exists() or not self.inputdir.is_dir():
             raise FileNotFoundError(f"Input directory {self.inputdir} does not exist or is not a directory.")
 

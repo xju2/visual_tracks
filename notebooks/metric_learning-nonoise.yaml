@@ -1,0 +1,59 @@
+# CommonFramework configuration
+stage: graph_construction
+model: MetricLearning
+input_dir: /home/xju/projects/tracking/itk/For2023Paper/2023_uncorr_feature_store
+stage_dir: /global/home/users/xju/projects/ITk/For2023Paper/Trained_v1/metric_learning_noNoise_v5/
+project: AllEvents_MetricLearning_NoNoise
+gpus: [0]
+nodes: 1
+
+# Dataset parameters
+data_split: [8000, 900, 900] # Number of [training, validation, testing] examples
+
+weighting:
+  - weight: 1.
+    conditions:
+      y: False
+  - weight: 1.
+    conditions:
+      y: True
+  - weight: 10.
+    conditions:
+      y: True
+      pt: [900, .inf]
+      nhits: [3, .inf]
+      primary: True
+      pdgId: [not_in, [11, -11]]
+
+# A list of hard cut conditions. Any hits not passing these conditions will be removed from the training and validation dataset.
+# By definition, noise will not pass any of these cuts, so any hard cuts will remove noise.
+hard_cuts:
+        #pt: [20, .inf]  # to remove noise hits.
+
+# Model parameters
+undirected: True
+node_features: [r,    phi,  z, count_1, charge_count_1, loc_eta_1, loc_phi_1, localDir0_1, localDir1_1, localDir2_1, glob_eta_1, glob_phi_1, eta_angle_1, phi_angle_1]
+node_scales: [1000, 3.14, 3000, 2, 12, 1, 3.14, 1, 1, 1, 1, 3.14, 3, 1]
+emb_hidden: 1024
+nb_layer: 4
+emb_dim: 32
+activation: ReLU
+randomisation: 1
+# points_per_batch: 100000
+r_train: 0.1
+knn: 100
+knn_val: 1000
+r_infer: 0.1
+knn_infer: 1000
+
+# Training parameters
+warmup: 0
+warmup_batches: 4000
+margin: 0.1
+lr: 0.005
+factor: 0.8
+patience: 1
+max_epochs: 60
+metric_to_monitor: train/f1
+metric_mode: max
+scheduler: ReduceLROnPlateau

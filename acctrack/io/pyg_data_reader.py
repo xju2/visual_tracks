@@ -1,12 +1,14 @@
 """This moudle reads the PyG data object created by the CommomFramework.
 """
+from typing import Union
 import re
+from pathlib import Path
 
 import torch
 from acctrack.io.base import BaseTrackDataReader
 
 class TrackGraphDataReader(BaseTrackDataReader):
-    def __init__(self, inputdir: str, output_dir: str = None,
+    def __init__(self, inputdir: Union[str, Path], output_dir: str = None,
                  overwrite: bool = True, name="BaseTrackDataReader"):
         super().__init__(inputdir, output_dir, overwrite, name)
 
@@ -26,8 +28,8 @@ class TrackGraphDataReader(BaseTrackDataReader):
             return evtid
 
         self.all_evtids = sorted([find_evt_info(x) for x in self.pyg_files])
-        print("Total {} events in directory: {}".format(
-            self.nevts, self.inputdir))
+        print("{}: Total {} events in directory: {}".format(
+            self.name, self.nevts, self.inputdir))
 
     def read(self, evtid: int = 0) -> bool:
         """Read one event from the input directory."""

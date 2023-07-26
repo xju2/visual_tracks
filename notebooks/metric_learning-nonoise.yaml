@@ -1,7 +1,7 @@
 # CommonFramework configuration
 stage: graph_construction
 model: MetricLearning
-input_dir: /home/xju/projects/tracking/itk/For2023Paper/2023_uncorr_feature_store
+input_dir: /global/homes/x/xju/m3443/usr/xju/ITk/For2023Paper/2023_uncorr_feature_store
 stage_dir: /global/home/users/xju/projects/ITk/For2023Paper/Trained_v1/metric_learning_noNoise_v5/
 project: AllEvents_MetricLearning_NoNoise
 gpus: [0]

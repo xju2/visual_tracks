@@ -8,6 +8,7 @@ from typing import Optional
 from pathlib import Path
 from acctrack.io.pyg_data_reader import TrackGraphDataReader
 from acctrack.tools.utils_graph import build_edges, graph_intersection
+from acctrack.tools.edge_perf import EdgePerformance
 
 import yaml
 import torch
@@ -28,6 +29,7 @@ class ModelLoader:
 class TorchModelInference:
     def __init__(self, config_fname: str, model_path: str,
                  output_path: str, name="TorchModelInference") -> None:
+        self.name = name
 
         with open(config_fname, "r") as f:
             config = yaml.load(f, Loader=yaml.FullLoader)
@@ -45,6 +47,8 @@ class TorchModelInference:
         self.output_path = output_path
         self.stage_name = config['stage']
 
+        self.edge_perf = EdgePerformance()
+
     def inference(self, evtid: int, radius: float = 0.1, knn: int = 1000,
                   knn_backend: Optional[str] = None) -> Tensor:
         data = self.data_reader_training.read(evtid)
@@ -58,24 +62,13 @@ class TorchModelInference:
 
             edge_index = build_edges(embedding, r_max=radius, k_max=knn, backend=knn_backend)
 
-            track_edges = data['track_edges']
+            true_edges = data['track_edges']
             # get *undirected* graph
-            track_edges = torch.cat([track_edges, track_edges.flip(0)], dim=-1)
+            true_edges = torch.cat([true_edges, true_edges.flip(0)], dim=-1)
 
-            # per-edge purity
-            num_true_edges, num_reco_edges = track_edges.shape[1], edge_index.shape[1]
-            per_edge_purity = 100. * num_true_edges / num_reco_edges
-            print("True Edges {:,}, Reco Edges {:,}, Per-edge purity: {:.4f}%".format(
-                num_true_edges, num_reco_edges, per_edge_purity))
+            truth_labels, per_edge_efficiency, per_edge_purity = self.edge_perf.eval(edge_index, true_edges)
 
-            # per-edge efficiency
-            truth_labels = graph_intersection(edge_index, track_edges)
-            num_true_reco_edges = truth_labels.sum().item()
-            per_edge_efficiency = 100. * num_true_reco_edges / num_reco_edges
-            print("True Reco Edges {:,}, Reco Edges {:,}, Per-edge efficiency: {:.4f}%".format(
-                num_true_reco_edges, num_reco_edges, per_edge_efficiency))
-
-            return edge_index, truth_labels
+            return edge_index, truth_labels, true_edges
         else:
             pass
 

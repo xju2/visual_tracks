@@ -1,6 +1,6 @@
 """This moudle reads the PyG data object created by the CommomFramework.
 """
-from typing import Union
+from typing import Union, List, Optional
 import re
 from pathlib import Path
 
@@ -31,12 +31,26 @@ class TrackGraphDataReader(BaseTrackDataReader):
         print("{}: Total {} events in directory: {}".format(
             self.name, self.nevts, self.inputdir))
 
+        self.data = None
+
     def read(self, evtid: int = 0) -> bool:
         """Read one event from the input directory."""
         filename = self.pyg_files[evtid]
         print("Reading file: {}".format(filename))
         data = torch.load(filename, map_location=torch.device("cpu"))
-
-        # particles
+        self.data = data
 
         return data
+
+    def get_node_features(self, node_features: List[str],
+                          node_scales: Optional[List[float]] = None) -> torch.Tensor:
+        """Get the node features from the data object"""
+        if self.data is None:
+            raise RuntimeError("Please read the data first!")
+
+        node_features = torch.stack([self.data[x] for x in node_features], dim=-1).float()
+        if node_scales is not None:
+            node_scales = torch.Tensor(node_scales)
+            node_features = node_features / node_scales
+
+        return node_features

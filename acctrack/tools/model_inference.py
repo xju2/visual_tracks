@@ -55,8 +55,8 @@ class TorchModelInference:
         if self.stage_name == "graph_construction":
             node_features = self.config["node_features"]
             node_scales = torch.Tensor(self.config["node_scales"])
-            input_data = torch.stack([data[x] for x in node_features], dim=-1).float()
-            features = input_data / node_scales
+
+            features = self.data_reader_training.get_node_features(node_features, node_scales)
             # print("model is at:", self.model_reader.model.device, "and input data is at:", features.device)
             embedding = self.model_reader.predict(features)
 

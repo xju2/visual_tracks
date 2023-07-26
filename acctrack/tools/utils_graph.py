@@ -1,5 +1,6 @@
 import logging
 from typing import Optional, Tuple, Union
+import scipy as sp
 
 
 import torch.nn as nn
@@ -122,45 +123,34 @@ def build_edges(
     return (edge_list, dists, idxs, ind) if (return_indices and backend=="FRNN") else edge_list
 
 
-def graph_intersection(input_pred_graph, input_truth_graph, return_y_pred=True, return_y_truth=False,
-                       return_pred_to_truth=False, return_truth_to_pred=False, unique_pred=True, unique_truth=True):
+def graph_intersection(edge_index: torch.Tensor, true_edges: torch.Tensor) -> torch.Tensor:
     """
-    An updated version of the graph intersection function, which is around 25x faster than the
-    Scipy implementation (on GPU). Takes a prediction graph and a truth graph, assumed to have unique entries.
-    If unique_pred or unique_truth is False, the function will first find the unique entries in the input graphs, and return the updated edge lists.
+    Use sparse representation to compare the predicted graph
+    and the truth graph so as to label the edges in the predicted graph
+    to be 1 as true and 0 as false.
     """
+    num_reco_edges = edge_index.shape[1]
+    # check if the two tensors in the same device. If not move the truth edges to the same device
+    device = edge_index.device
+    if device != true_edges.device:
+        true_edges = true_edges.to(device)
 
-    if not unique_pred:
-        input_pred_graph = torch.unique(input_pred_graph, dim=1)
-    if not unique_truth:
-        input_truth_graph = torch.unique(input_truth_graph, dim=1)
+    # unique edges in the union of the predicted and truth edges
+    # inverse is the index of the unique edges in the union
+    unique_edges, inverse = torch.unique(torch.cat([edge_index, true_edges], dim=1),
+                                         dim=1, sorted=False, return_inverse=True, return_counts=False)
 
-    unique_edges, inverse = torch.unique(torch.cat([input_pred_graph, input_truth_graph], dim=1), dim=1, sorted=False, return_inverse=True, return_counts=False)
+    predict_in_unique_edges = inverse[:num_reco_edges]
 
-    inverse_pred_map = torch.ones_like(unique_edges[1]) * -1
-    inverse_pred_map[inverse[:input_pred_graph.shape[1]]] = torch.arange(input_pred_graph.shape[1], device=input_pred_graph.device)
+    # among the unique edges, which are from the predicted graph
+    unique_edge_from_reco = torch.ones_like(unique_edges[1]).to(device) * -1
+    unique_edge_from_reco[inverse[:num_reco_edges]] = torch.arange(num_reco_edges, device=device)
 
-    inverse_truth_map = torch.ones_like(unique_edges[1]) * -1
-    inverse_truth_map[inverse[input_pred_graph.shape[1]:]] = torch.arange(input_truth_graph.shape[1], device=input_truth_graph.device)
+    # among the unique edges, which are from the truth graph
+    unique_edge_from_truth = torch.ones_like(unique_edges[1]).to(device) * -1
+    unique_edge_from_truth[inverse[num_reco_edges:]] = torch.arange(true_edges.shape[1], device=device)
 
-    pred_to_truth = inverse_truth_map[inverse][:input_pred_graph.shape[1]]
-    truth_to_pred = inverse_pred_map[inverse][input_pred_graph.shape[1]:]
+    # which edges in the predicted graph are also in the truth graph
+    edge_index_truth = unique_edge_from_truth[predict_in_unique_edges] >= 0
 
-    return_tensors = []
-
-    if not unique_pred:
-        return_tensors.append(input_pred_graph)
-    if not unique_truth:
-        return_tensors.append(input_truth_graph)
-    if return_y_pred:
-        y_pred = pred_to_truth >= 0
-        return_tensors.append(y_pred)
-    if return_y_truth:
-        y_truth = truth_to_pred >= 0
-        return_tensors.append(y_truth)
-    if return_pred_to_truth:
-        return_tensors.append(pred_to_truth)
-    if return_truth_to_pred:
-        return_tensors.append(truth_to_pred)
-
-    return return_tensors if len(return_tensors) > 1 else return_tensors[0]
+    return edge_index_truth

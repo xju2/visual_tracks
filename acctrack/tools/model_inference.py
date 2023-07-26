@@ -7,7 +7,7 @@
 from typing import Optional
 from pathlib import Path
 from acctrack.io.pyg_data_reader import TrackGraphDataReader
-from acctrack.tools.utils_graph import build_edges
+from acctrack.tools.utils_graph import build_edges, graph_intersection
 
 import yaml
 import torch
@@ -45,7 +45,8 @@ class TorchModelInference:
         self.output_path = output_path
         self.stage_name = config['stage']
 
-    def inference(self, evtid: int, knn_backend: Optional[str] = None) -> Tensor:
+    def inference(self, evtid: int, radius: float = 0.1, knn: int = 1000,
+                  knn_backend: Optional[str] = None) -> Tensor:
         data = self.data_reader_training.read(evtid)
         if self.stage_name == "graph_construction":
             node_features = self.config["node_features"]
@@ -55,17 +56,26 @@ class TorchModelInference:
             # print("model is at:", self.model_reader.model.device, "and input data is at:", features.device)
             embedding = self.model_reader.predict(features)
 
-            r_max, k_max = self.config["r_infer"], self.config["knn_infer"]
-            edge_index = build_edges(embedding, r_max=r_max, k_max=k_max, backend=knn_backend)
+            edge_index = build_edges(embedding, r_max=radius, k_max=knn, backend=knn_backend)
 
             track_edges = data['track_edges']
             # get *undirected* graph
             track_edges = torch.cat([track_edges, track_edges.flip(0)], dim=-1)
-            print("track_edge shape:", track_edges.shape, "edge_index shape:", edge_index.shape)
 
-            # then evaluate the predicted edges with the true edges
+            # per-edge purity
+            num_true_edges, num_reco_edges = track_edges.shape[1], edge_index.shape[1]
+            per_edge_purity = 100. * num_true_edges / num_reco_edges
+            print("True Edges {:,}, Reco Edges {:,}, Per-edge purity: {:.4f}%".format(
+                num_true_edges, num_reco_edges, per_edge_purity))
 
-            return edge_index
+            # per-edge efficiency
+            truth_labels = graph_intersection(edge_index, track_edges)
+            num_true_reco_edges = truth_labels.sum().item()
+            per_edge_efficiency = 100. * num_true_reco_edges / num_reco_edges
+            print("True Reco Edges {:,}, Reco Edges {:,}, Per-edge efficiency: {:.4f}%".format(
+                num_true_reco_edges, num_reco_edges, per_edge_efficiency))
+
+            return edge_index, truth_labels
         else:
             pass
 

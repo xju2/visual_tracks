@@ -18,6 +18,8 @@ class EdgePerformance:
              *args: Any, **kwds: Any) -> Any:
         """Evaluate the per-edge performance"""
 
+        num_true_edges = true_edges.shape[1]
+
         truth_labels = graph_intersection(edge_index, true_edges)
 
         # per-edge efficiency

@@ -34,21 +34,23 @@ if not torch.cuda.is_available():
 # ---------------------------- Edge Building ------------------------------
 
 def build_edges(
-    query: torch.Tensor,
-    database: torch.Tensor,
+    embedding: torch.Tensor,
     indices: Optional[torch.Tensor] = None,
     r_max: float = 1.0,
     k_max: int = 10,
     return_indices: bool = False,
-    backend: str = "FRNN"
+    backend: str = "FRNN",
+    nlist: int = 100,
+    nprobe: int = 5,
 ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]:
-
+    backend = backend.lower() if backend is not None else backend
     # Type hint
-    if backend == "FRNN" and FRNN_AVAILABLE:
+    if backend == "frnn" and FRNN_AVAILABLE:
+        embedding = embedding.cuda()
         # Compute edges
         dists, idxs, _, _ = frnn.frnn_grid_points(
-            points1=query.unsqueeze(0),
-            points2=database.unsqueeze(0),
+            points1=embedding.unsqueeze(0),
+            points2=embedding.unsqueeze(0),
             lengths1=None,
             lengths2=None,
             K=k_max,
@@ -59,21 +61,56 @@ def build_edges(
         )
 
         idxs: torch.Tensor = idxs.squeeze().int()
-        ind = torch.arange(idxs.shape[0], device=query.device).repeat(idxs.shape[1], 1).T.int()
+        ind = torch.arange(idxs.shape[0], device=embedding.device).repeat(idxs.shape[1], 1).T.int()
         positive_idxs = idxs >= 0
         edge_list = torch.stack([ind[positive_idxs], idxs[positive_idxs]]).long()
-    elif faiss_avail and "FAISS" in backend:
-        if backend == "FAISS-CPU":
-            dists, idxs = faiss.knn(query.detach().cpu().numpy(), database.detach().cpu().numpy(), k_max)
+    elif faiss_avail and "faiss" in backend:
+        emebdding_array = embedding.detach().cpu().numpy()
+        if backend == "faiss-cpu-ivf":
+            quantizer = faiss.IndexFlatL2(embedding.shape[1])
+            index = faiss.IndexIVFFlat(quantizer, embedding.shape[1], nlist, faiss.METRIC_L2)
+            index.train(emebdding_array)
+            # default # of probes is 1
+            index.nprobe = nprobe
+            index.add(emebdding_array)
+            dists, idxs = index.search(emebdding_array, k_max)
+        elif backend == "faiss-cpu-flatl2":
+            index_flat = faiss.IndexFlatL2(embedding.shape[1])
+            index_flat.add(emebdding_array)
+            dists, idxs = index_flat.search(emebdding_array, k_max)
+        elif backend == "faiss-cpu-scalarquantizer":
+            index = faiss.IndexScalarQuantizer(embedding.shape[1], faiss.METRIC_L2)
+            index.train(emebdding_array)
+            index.add(emebdding_array)
+            dists, idxs = index.search(emebdding_array, k_max)
+        elif backend == "faiss-gpu" and torch.cuda.is_available():   # GPU version
+            res = faiss.StandardGpuResources()
+            index_flat = faiss.GpuIndexFlatL2(res, embedding.shape[1])
+            index_flat.add(emebdding_array)
+            dists, idxs = index_flat.search(emebdding_array, k_max)
+        elif backend == "faiss-gpu-quantized" and torch.cuda.is_available():   # GPU version
+            res = faiss.StandardGpuResources()
+            index = faiss.GpuIndexIVFFlat(res, embedding.shape[1], nlist, faiss.METRIC_L2)
+            print("after gpu index")
+            index.train(emebdding_array)
+            print("after train")
+            # default # of probes is 1
+            # index.nprobe = nprobe
+
+            index.add(emebdding_array)
+            print("after add")
+            dists, idxs = index.search(emebdding_array, k_max)
+            print("after search")
         else:
-            dists, idxs = faiss.knn_gpu(query, database, k_max)
-        print(dist.shape, idxs.shape)
-        dists, idxs = dists[:, 1:], idxs[:, 1:]  # Remove self-loops
-        ind = torch.arange(idxs.shape[0], device=query.device).repeat(idxs.shape[1], 1).T.int()
+            raise ValueError(f"faiss is available, but the mode {backend} is not supported,"
+                             "please chose faiss-cpu, faiss-cpu-quantized, or faiss-gpu")
+
+        dists, idxs = torch.from_numpy(dists), torch.from_numpy(idxs)
+        ind = torch.arange(idxs.shape[0], device=embedding.device).repeat(idxs.shape[1], 1).T.int()
         positive_idxs = (dists <= r_max**2)
-        edge_list = torch.stack([ind[positive_idxs], idxs[positive_idxs]]).int()
+        edge_list = torch.stack([ind[positive_idxs], idxs[positive_idxs]]).long()
     else:
-        edge_list = radius(database, query, r=r_max, max_num_neighbors=k_max)
+        edge_list = radius(embedding, embedding, r=r_max, max_num_neighbors=k_max)
 
     # Reset indices subset to correct global index
     if indices is not None:
@@ -85,7 +122,8 @@ def build_edges(
     return (edge_list, dists, idxs, ind) if (return_indices and backend=="FRNN") else edge_list
 
 
-def graph_intersection(input_pred_graph, input_truth_graph, return_y_pred=True, return_y_truth=False, return_pred_to_truth=False, return_truth_to_pred=False, unique_pred=True, unique_truth=True):
+def graph_intersection(input_pred_graph, input_truth_graph, return_y_pred=True, return_y_truth=False,
+                       return_pred_to_truth=False, return_truth_to_pred=False, unique_pred=True, unique_truth=True):
     """
     An updated version of the graph intersection function, which is around 25x faster than the
     Scipy implementation (on GPU). Takes a prediction graph and a truth graph, assumed to have unique entries.

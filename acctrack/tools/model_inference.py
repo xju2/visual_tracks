@@ -20,6 +20,7 @@ class ModelLoader:
         self.model = None
 
     def load(self) -> None:
+        print("Loading model from", self.model_path)
         self.model = torch.jit.load(self.model_path)
         self.model.eval()
 

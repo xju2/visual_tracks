@@ -54,3 +54,14 @@ class TrackGraphDataReader(BaseTrackDataReader):
             node_features = node_features / node_scales
 
         return node_features
+
+    def get_edge_masks(self) -> torch.Tensor:
+        """Get the masks for edges of interest"""
+        if self.data is None:
+            raise RuntimeError("Please read the data first!")
+
+        data = self.data
+        # edge-level selections
+        mask = (data.pt >= 900) & (data.nhits >= 3) & (data.primary == 1) \
+            & (data.pdgId != 11) & (data.pdgId != -11)
+        return mask

@@ -44,14 +44,17 @@ class TorchModelInference:
         self.data_reader_validation = TrackGraphDataReader(data_path / "valset", name="Validation")
         self.data_reader_test = TrackGraphDataReader(data_path / "testset", name="Test")
 
+        self.data_reader = self.data_reader_training
+
         self.output_path = output_path
         self.stage_name = config['stage']
 
-        self.edge_perf = EdgePerformance()
+        self.edge_perf = EdgePerformance(self.data_reader)
 
     def inference(self, evtid: int, radius: float = 0.1, knn: int = 1000,
                   knn_backend: Optional[str] = None) -> Tensor:
-        data = self.data_reader_training.read(evtid)
+
+        self.data_reader_training.read(evtid)  # tell the reader to read the event
         if self.stage_name == "graph_construction":
             node_features = self.config["node_features"]
             node_scales = torch.Tensor(self.config["node_scales"])
@@ -61,12 +64,7 @@ class TorchModelInference:
             embedding = self.model_reader.predict(features)
 
             edge_index = build_edges(embedding, r_max=radius, k_max=knn, backend=knn_backend)
-
-            true_edges = data['track_edges']
-            # get *undirected* graph
-            true_edges = torch.cat([true_edges, true_edges.flip(0)], dim=-1)
-
-            truth_labels, per_edge_efficiency, per_edge_purity = self.edge_perf.eval(edge_index, true_edges)
+            truth_labels, true_edges, per_edge_efficiency, per_edge_purity = self.edge_perf.eval(edge_index)
 
             return edge_index, truth_labels, true_edges
         else:

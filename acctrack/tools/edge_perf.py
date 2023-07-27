@@ -51,7 +51,7 @@ class EdgePerformance:
         num_masked_true_reco_edges = masked_truth_labels.sum().item()
         per_masked_edge_efficiency = 100. * num_masked_true_reco_edges / num_masked_true_edges
         frac_masked_true_reco_edges = 100. * num_masked_true_edges / num_true_edges
-        print("Only {:3f}% of true edges are of interests (signal)".format(frac_masked_true_reco_edges))
+        print("Only {:.3f}% of true edges are of interests (signal)".format(frac_masked_true_reco_edges))
         print("True Reco Signal Edges {:,}, True Signal Edges {:,}, Per-edge signal efficiency: {:.3f}%".format(
             num_masked_true_reco_edges, num_masked_true_edges, per_masked_edge_efficiency))
 

@@ -28,9 +28,14 @@ class ModelLoader:
         return self.model.forward(data)
 
 class TorchModelInference:
-    def __init__(self, config_fname: str, model_path: str,
+    def __init__(self, config_fname: str,
+                 data_type: str,
+                 model_path: str,
                  output_path: str, name="TorchModelInference") -> None:
         self.name = name
+        # data type can be trainset, valset, or testset
+        assert data_type in ["trainset", "valset", "testset"], \
+            "data_type must be trainset, valset, or testset"
 
         with open(config_fname, "r") as f:
             config = yaml.load(f, Loader=yaml.FullLoader)
@@ -41,11 +46,11 @@ class TorchModelInference:
         self.model_reader.load()
 
         data_path = Path(config['input_dir'])
-        self.data_reader_training = TrackGraphDataReader(data_path / "trainset", name="Training")
-        self.data_reader_validation = TrackGraphDataReader(data_path / "valset", name="Validation")
-        self.data_reader_test = TrackGraphDataReader(data_path / "testset", name="Test")
+        # self.data_reader_training = TrackGraphDataReader(data_path / "trainset", name="Training")
+        # self.data_reader_validation = TrackGraphDataReader(data_path / "valset", name="Validation")
+        # self.data_reader_test = TrackGraphDataReader(data_path / "testset", name="Test")
 
-        self.data_reader = self.data_reader_training
+        self.data_reader = TrackGraphDataReader(data_path / data_type, name=data_type)
 
         self.output_path = output_path
         self.stage_name = config['stage']
@@ -55,12 +60,12 @@ class TorchModelInference:
     def inference(self, evtid: int, radius: float = 0.1, knn: int = 1000,
                   knn_backend: Optional[str] = None) -> Tensor:
 
-        self.data_reader_training.read(evtid)  # tell the reader to read the event
+        self.data_reader.read(evtid)  # tell the reader to read the event
         if self.stage_name == "graph_construction":
             node_features = self.config["node_features"]
             node_scales = torch.Tensor(self.config["node_scales"])
 
-            features = self.data_reader_training.get_node_features(node_features, node_scales)
+            features = self.data_reader.get_node_features(node_features, node_scales)
             # print("model is at:", self.model_reader.model.device, "and input data is at:", features.device)
             embedding = self.model_reader.predict(features)
 

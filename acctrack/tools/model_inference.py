@@ -6,6 +6,10 @@
 """
 from typing import Optional
 from pathlib import Path
+import numpy as np
+import psutil
+import datetime
+
 from acctrack.io.pyg_data_reader import TrackGraphDataReader
 from acctrack.tools.utils_graph import build_edges, graph_intersection
 from acctrack.tools.edge_perf import EdgePerformance
@@ -13,6 +17,27 @@ from acctrack.tools.edge_perf import EdgePerformance
 import yaml
 import torch
 from torch import Tensor
+
+def batched_inference(model, senders, receivers, batch_size=1024):
+    results = []
+    n_batches = int(np.ceil(senders.shape[0] / batch_size))
+    print("processing {:,} batches".format(n_batches))
+    for i in range(n_batches):
+        if i % 1000 == 0:
+            print("processing batch {:,}".format(i))
+        if i == n_batches - 1:
+            batch_senders = senders[i*batch_size:]
+            batch_receivers = receivers[i*batch_size:]
+        else:
+            batch_senders = senders[i*batch_size:(i+1)*batch_size]
+            batch_receivers = receivers[i*batch_size:(i+1)*batch_size]
+
+        with torch.no_grad():
+            batch_edge_scores = model.forward(batch_senders, batch_receivers).detach()
+            results.append(batch_edge_scores)
+
+    results = torch.cat(results, dim=0)
+    return results
 
 class ModelLoader:
     def __init__(self, model_path: str) -> None:
@@ -24,8 +49,8 @@ class ModelLoader:
         self.model = torch.jit.load(self.model_path)
         self.model.eval()
 
-    def predict(self, data) -> Tensor:
-        return self.model.forward(data)
+    def predict(self, *arg) -> Tensor:
+        return self.model.forward(*arg)
 
 class TorchModelInference:
     def __init__(self, config_fname: str,
@@ -46,10 +71,6 @@ class TorchModelInference:
         self.model_reader.load()
 
         data_path = Path(config['input_dir'])
-        # self.data_reader_training = TrackGraphDataReader(data_path / "trainset", name="Training")
-        # self.data_reader_validation = TrackGraphDataReader(data_path / "valset", name="Validation")
-        # self.data_reader_test = TrackGraphDataReader(data_path / "testset", name="Test")
-
         self.data_reader = TrackGraphDataReader(data_path / data_type, name=data_type)
 
         self.output_path = output_path
@@ -76,3 +97,101 @@ class TorchModelInference:
         else:
             pass
 
+
+class ExaTrkxInference:
+    def __init__(self, config_fname: str, data_path: str, name="ExaTrkxInference") -> None:
+        self.name = name
+
+        with open(config_fname, "r") as f:
+            config = yaml.load(f, Loader=yaml.FullLoader)
+
+        self.config = config
+
+        self.data_reader = TrackGraphDataReader(data_path, name=self.name+"DataReader")
+        self.edge_perf = EdgePerformance(self.data_reader)
+
+        e_config = config['embedding']
+        self.embedding_model = torch.jit.load(e_config['model_path'])
+        self.embedding_model.eval()
+        self.embedding_model.hparams = e_config
+
+        f_config = config['filtering']
+        self.filtering_model = torch.jit.load(f_config['model_path'])
+        self.filtering_model.eval()
+        self.filtering_model.hparams = f_config
+
+    def _get_system_info(self, process):
+        # return memory usage in MB
+        # return cpu time in seconds
+        results = {}
+        with process.oneshot():
+            results['memory'] = int(process.memory_full_info().uss / 1024 ** 2)
+            results['cpu_time'] = int(process.cpu_times().system)
+            results['datetime'] = datetime.datetime.now()
+        return results
+
+    def _print_memory_usage(self, tag_name, process):
+        print("{}, CPU memory usage: {:,} MB".format(
+            tag_name, self._get_system_info(process)['memory']))
+
+    def __call__(self, evtid, *args, **kwargs):
+        _ = self.data_reader.read(evtid)
+        process = psutil.Process()
+        self._print_memory_usage("After reading data", process)
+
+        # embedding
+        node_features = self.embedding_model.hparams["node_features"]
+        node_scales = self.embedding_model.hparams["node_scales"]
+        features = self.data_reader.get_node_features(node_features, node_scales)
+        with torch.no_grad():
+            embedding = self.embedding_model.forward(features).detach()
+        self._print_memory_usage("After embedding", process)
+
+        # FRNN
+        r_max = self.embedding_model.hparams["r_infer"]
+        k_max = self.embedding_model.hparams["knn_infer"]
+        knn_backend = self.embedding_model.hparams["knn_backend"]
+        edge_index = build_edges(embedding, r_max=r_max, k_max=k_max, backend=knn_backend)
+        self._print_memory_usage("After FRNN", process)
+        # edge-level performance
+        truth_labels, true_edges, per_edge_efficiency, per_edge_purity = self.edge_perf.eval(edge_index)
+        self._print_memory_usage("After Edge Evaluation", process)
+
+        # filtering
+        node_features = self.filtering_model.hparams["node_features"]
+        node_scales = self.filtering_model.hparams["node_scales"]
+        features = self.data_reader.get_node_features(node_features, node_scales)
+        self._print_memory_usage("After Retrieving Filtering Node features", process)
+
+        ## divide into batches
+        batch_size = self.filtering_model.hparams["batch_size"]
+        senders, receivers = features[edge_index[0]], features[edge_index[1]]
+        self._print_memory_usage("After Splitting Node features", process)
+
+        # filter_edge_scores = self.filtering_model.forward(senders[:batch_size], receivers[:batch_size])
+
+        filter_edge_scores = batched_inference(self.filtering_model, senders, receivers, batch_size=batch_size)
+        # with torch.no_grad():
+        #     filter_edge_scores = self.filtering_model.forward(senders, receivers)
+        self._print_memory_usage("After Filtering", process)
+
+        return dict(
+            edge_index=edge_index,
+            truth_labels=truth_labels,
+            true_edges=true_edges,
+            filter_edge_scores=filter_edge_scores,
+            per_edge_efficiency_embedding=per_edge_efficiency,
+            per_edge_purity_embedding=per_edge_purity
+            )
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='ExaTrkX Inference')
+    add_arg = parser.add_argument
+    add_arg('config', help='configuration file')
+    add_arg('data', help="data path")
+
+    args = parser.parse_args()
+    inf = ExaTrkxInference(args.config, args.data)
+    results = inf(0)

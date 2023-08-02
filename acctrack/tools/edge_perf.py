@@ -52,7 +52,7 @@ class EdgePerformance:
 
         return truth_labels, true_edges, per_edge_efficiency, per_edge_purity
 
-    def eval_edge_scores(edge_socre: torch.Tensor, truth_labels: torch.Tensor,
+    def eval_edge_scores(self, edge_score: torch.Tensor, truth_labels: torch.Tensor,
                          edge_weights: Optional[torch.Tensor] = None,
                          edge_weight_cuts: float = 0,
                          outname: Optional[str] = None):
@@ -60,7 +60,7 @@ class EdgePerformance:
         If edge_weights is not None, only plot the edges with weights > edge_weight_cuts.
         Edge weights are used mostly to remove edges that are true but not of interests (non-signal edges).
         """
-        plot_metrics(edge_socre, truth_labels, outname=outname)
+        plot_metrics(edge_score, truth_labels, outname=outname)
         if edge_weights is not None:
-            target_score, target_truth = edge_socre[edge_weights > edge_weight_cuts], truth_labels[edge_weights > edge_weight_cuts]
+            target_score, target_truth = edge_score[edge_weights > edge_weight_cuts], truth_labels[edge_weights > edge_weight_cuts]
             plot_metrics(target_score, target_truth, outname=outname + "-target")

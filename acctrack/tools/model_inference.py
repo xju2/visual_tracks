@@ -11,19 +11,22 @@ import psutil
 import datetime
 
 from acctrack.io.pyg_data_reader import TrackGraphDataReader
-from acctrack.tools.utils_graph import build_edges, graph_intersection
+from acctrack.tools.utils_graph import build_edges
 from acctrack.tools.edge_perf import EdgePerformance
 
 import yaml
 import torch
 from torch import Tensor
 
-def batched_inference(model, senders, receivers, batch_size=1024):
+def batched_inference(model, senders, receivers,
+                      batch_size: int = 1024,
+                      debug: bool = False):
     results = []
     n_batches = int(np.ceil(senders.shape[0] / batch_size))
-    print("processing {:,} batches".format(n_batches))
+    if debug:
+        print("processing {:,} batches".format(n_batches))
     for i in range(n_batches):
-        if i % 1000 == 0:
+        if debug and i % 1000 == 0:
             print("processing batch {:,}".format(i))
         if i == n_batches - 1:
             batch_senders = senders[i*batch_size:]
@@ -106,6 +109,8 @@ class ExaTrkxInference:
             config = yaml.load(f, Loader=yaml.FullLoader)
 
         self.config = config
+        self.process = psutil.Process()
+        self.system_data = []
 
         self.data_reader = TrackGraphDataReader(data_path, name=self.name+"DataReader")
         self.edge_perf = EdgePerformance(self.data_reader)
@@ -120,60 +125,66 @@ class ExaTrkxInference:
         self.filtering_model.eval()
         self.filtering_model.hparams = f_config
 
-    def _get_system_info(self, process):
+    def _get_system_info(self):
         # return memory usage in MB
         # return cpu time in seconds
         results = {}
+        process = self.process
         with process.oneshot():
             results['memory'] = int(process.memory_full_info().uss / 1024 ** 2)
             results['cpu_time'] = int(process.cpu_times().system)
             results['datetime'] = datetime.datetime.now()
         return results
 
-    def _print_memory_usage(self, tag_name, process):
+    def _add_system_data(self, tag_name: str = "start"):
+        results = self._get_system_info()
+        results['tag'] = tag_name
+        self.system_data.append(results)
+
+    def _print_memory_usage(self, tag_name: str):
         print("{}, CPU memory usage: {:,} MB".format(
-            tag_name, self._get_system_info(process)['memory']))
+            tag_name, self._get_system_info()['memory']))
 
     def __call__(self, evtid, *args, **kwargs):
-        _ = self.data_reader.read(evtid)
-        process = psutil.Process()
-        self._print_memory_usage("After reading data", process)
+        self._print_memory_usage("Start")
 
+        _ = self.data_reader.read(evtid)
+        self._print_memory_usage("After reading data")
         # embedding
         node_features = self.embedding_model.hparams["node_features"]
         node_scales = self.embedding_model.hparams["node_scales"]
         features = self.data_reader.get_node_features(node_features, node_scales)
         with torch.no_grad():
             embedding = self.embedding_model.forward(features).detach()
-        self._print_memory_usage("After embedding", process)
+        self._print_memory_usage("After embedding")
 
         # FRNN
         r_max = self.embedding_model.hparams["r_infer"]
         k_max = self.embedding_model.hparams["knn_infer"]
         knn_backend = self.embedding_model.hparams["knn_backend"]
         edge_index = build_edges(embedding, r_max=r_max, k_max=k_max, backend=knn_backend)
-        self._print_memory_usage("After FRNN", process)
+        self._print_memory_usage("After FRNN")
         # edge-level performance
         truth_labels, true_edges, per_edge_efficiency, per_edge_purity = self.edge_perf.eval(edge_index)
-        self._print_memory_usage("After Edge Evaluation", process)
+        self._print_memory_usage("After Edge Evaluation")
 
-        # filtering
+        # fetching filtering node features
         node_features = self.filtering_model.hparams["node_features"]
         node_scales = self.filtering_model.hparams["node_scales"]
         features = self.data_reader.get_node_features(node_features, node_scales)
-        self._print_memory_usage("After Retrieving Filtering Node features", process)
+        self._print_memory_usage("After Retrieving Filtering Node features")
 
-        ## divide into batches
+        # get the senders and recievers
         batch_size = self.filtering_model.hparams["batch_size"]
         senders, receivers = features[edge_index[0]], features[edge_index[1]]
-        self._print_memory_usage("After Splitting Node features", process)
+        self._print_memory_usage("After Splitting Node features")
 
-        # filter_edge_scores = self.filtering_model.forward(senders[:batch_size], receivers[:batch_size])
-
+        # filtering inference
         filter_edge_scores = batched_inference(self.filtering_model, senders, receivers, batch_size=batch_size)
-        # with torch.no_grad():
-        #     filter_edge_scores = self.filtering_model.forward(senders, receivers)
-        self._print_memory_usage("After Filtering", process)
+        self._print_memory_usage("After Filtering")
+
+        # evaluate the edge scores
+        self.edge_perf.eval_edge_scores(filter_edge_scores, true_edges, outname="perf_filtering_evt{}".format(evtid))
 
         return dict(
             edge_index=edge_index,
@@ -181,8 +192,7 @@ class ExaTrkxInference:
             true_edges=true_edges,
             filter_edge_scores=filter_edge_scores,
             per_edge_efficiency_embedding=per_edge_efficiency,
-            per_edge_purity_embedding=per_edge_purity
-            )
+            per_edge_purity_embedding=per_edge_purity)
 
 
 if __name__ == '__main__':

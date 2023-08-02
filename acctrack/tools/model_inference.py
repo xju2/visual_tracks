@@ -184,7 +184,7 @@ class ExaTrkxInference:
         self._print_memory_usage("After Filtering")
 
         # evaluate the edge scores
-        self.edge_perf.eval_edge_scores(filter_edge_scores, true_edges, outname="perf_filtering_evt{}".format(evtid))
+        self.edge_perf.eval_edge_scores(filter_edge_scores, truth_labels, outname="perf_filtering_evt{}".format(evtid))
 
         return dict(
             edge_index=edge_index,

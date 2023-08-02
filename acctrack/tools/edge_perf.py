@@ -11,12 +11,7 @@ class EdgePerformance:
         self.reader = reader
         self.name = name
 
-    def eval(self, edge_index: torch.Tensor,
-             edge_socre: Optional[torch.Tensor] = None,
-             edge_weights: Optional[torch.Tensor] = None,
-             edge_weight_cuts: float = 0,
-             outname: Optional[str] = None,
-             *args: Any, **kwds: Any) -> Any:
+    def eval(self, edge_index: torch.Tensor, *args: Any, **kwds: Any) -> Any:
         """Evaluate the per-edge performance"""
 
         true_edges = self.reader.data['track_edges']
@@ -55,11 +50,17 @@ class EdgePerformance:
         print("True Reco Signal Edges {:,}, True Signal Edges {:,}, Per-edge signal efficiency: {:.3f}%".format(
             num_masked_true_reco_edges, num_masked_true_edges, per_masked_edge_efficiency))
 
-        # use the edge score to evaluate the edge classifier performance
-        if edge_socre is not None:
-            plot_metrics(edge_socre, truth_labels, outname=outname)
-            if edge_weights is not None:
-                target_score, target_truth = edge_socre[edge_weights > edge_weight_cuts], truth_labels[edge_weights > edge_weight_cuts]
-                plot_metrics(target_score, target_truth, outname=outname + "-target")
-
         return truth_labels, true_edges, per_edge_efficiency, per_edge_purity
+
+    def eval_edge_scores(edge_socre: torch.Tensor, truth_labels: torch.Tensor,
+                         edge_weights: Optional[torch.Tensor] = None,
+                         edge_weight_cuts: float = 0,
+                         outname: Optional[str] = None):
+        """Evaluate the per-edge performance given the edge scores.
+        If edge_weights is not None, only plot the edges with weights > edge_weight_cuts.
+        Edge weights are used mostly to remove edges that are true but not of interests (non-signal edges).
+        """
+        plot_metrics(edge_socre, truth_labels, outname=outname)
+        if edge_weights is not None:
+            target_score, target_truth = edge_socre[edge_weights > edge_weight_cuts], truth_labels[edge_weights > edge_weight_cuts]
+            plot_metrics(target_score, target_truth, outname=outname + "-target")

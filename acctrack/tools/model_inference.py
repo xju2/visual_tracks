@@ -142,8 +142,10 @@ class ExaTrkxInference:
         self.system_data.append(results)
 
     def _print_memory_usage(self, tag_name: str):
-        print("{}, CPU memory usage: {:,} MB".format(
-            tag_name, self._get_system_info()['memory']))
+        print("{} {}, CPU memory usage: {:,} MB".format(
+            datetime.datetime.now().strftime("%H:%M:%S"),
+            tag_name,
+            self._get_system_info()['memory']))
 
     def __call__(self, evtid, *args, **kwargs):
         self._print_memory_usage("Start")
@@ -183,6 +185,7 @@ class ExaTrkxInference:
         filter_edge_scores = batched_inference(self.filtering_model, senders, receivers, batch_size=batch_size)
         self._print_memory_usage("After Filtering")
 
+        # weights = self.data_reader.data.weights if "weights" in self.data_reader.data else None
         # evaluate the edge scores
         self.edge_perf.eval_edge_scores(filter_edge_scores, truth_labels, outname="perf_filtering_evt{}".format(evtid))
 

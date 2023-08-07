@@ -102,8 +102,10 @@ class TorchModelInference:
 
 
 class ExaTrkxInference:
-    def __init__(self, config_fname: str, data_path: str, name="ExaTrkxInference") -> None:
+    def __init__(self, config_fname: str, data_path: str,
+                 device: str = 'cpu', name="ExaTrkxInference") -> None:
         self.name = name
+        self.device = device
 
         with open(config_fname, "r") as f:
             config = yaml.load(f, Loader=yaml.FullLoader)
@@ -116,14 +118,21 @@ class ExaTrkxInference:
         self.edge_perf = EdgePerformance(self.data_reader)
 
         e_config = config['embedding']
-        self.embedding_model = torch.jit.load(e_config['model_path'])
+        self.embedding_model = torch.jit.load(e_config['model_path'], map_location=self.device)
         self.embedding_model.eval()
         self.embedding_model.hparams = e_config
 
         f_config = config['filtering']
-        self.filtering_model = torch.jit.load(f_config['model_path'])
+        self.filtering_model = torch.jit.load(f_config['model_path'], map_location=self.device)
         self.filtering_model.eval()
         self.filtering_model.hparams = f_config
+
+        g_config = config.get('gnn', None)
+        self.gnn_model = None
+        if g_config is not None:
+            self.gnn_model = torch.jit.load(g_config['model_path'], map_location=self.device)
+            self.gnn_model.eval()
+            self.gnn_model.hparams = g_config
 
     def _get_system_info(self):
         # return memory usage in MB
@@ -147,7 +156,7 @@ class ExaTrkxInference:
             tag_name,
             self._get_system_info()['memory']))
 
-    def __call__(self, evtid, *args, **kwargs):
+    def __call__(self, evtid, filter_cut: float = 0.57, save_output: bool = False, *args, **kwargs):
         self._print_memory_usage("Start")
 
         _ = self.data_reader.read(evtid)
@@ -182,12 +191,49 @@ class ExaTrkxInference:
         self._print_memory_usage("After Splitting Node features")
 
         # filtering inference
-        filter_edge_scores = batched_inference(self.filtering_model, senders, receivers, batch_size=batch_size)
+        filter_edge_scores = batched_inference(
+            self.filtering_model, senders, receivers,
+            batch_size=batch_size)
         self._print_memory_usage("After Filtering")
+        # apply sigmoid
+        filter_edge_scores = torch.sigmoid(filter_edge_scores)
 
         # weights = self.data_reader.data.weights if "weights" in self.data_reader.data else None
         # evaluate the edge scores
-        self.edge_perf.eval_edge_scores(filter_edge_scores, truth_labels, outname="perf_filtering_evt{}".format(evtid))
+        filter_perf = self.edge_perf.eval_edge_scores(
+            filter_edge_scores, truth_labels,
+            outname="perf_filtering_evt{}".format(evtid))
+
+        # obtain a threshold that gives 99% efficiency
+        # threshold = filter_perf[-1]
+        threshold = filter_cut
+        filtering_selections = filter_edge_scores > threshold
+        edge_index = edge_index[:, filtering_selections]
+        # update the truth labels
+        truth_labels = truth_labels[filtering_selections]
+        print("After filtering, {:,} edges remain".format(edge_index.shape[1]))
+
+        # apply the GNN to the filtered edges
+        if self.gnn_model is not None:
+            node_features = self.gnn_model.hparams["node_features"]
+            node_scales = self.gnn_model.hparams["node_scales"]
+            features = self.data_reader.get_node_features(node_features, node_scales)
+            self._print_memory_usage("After Retrieving GNN Node features")
+
+            # get the senders and recievers
+            senders, receivers = features[edge_index[0]], features[edge_index[1]]
+            self._print_memory_usage("After Splitting Node features")
+
+            # gnn inference
+            gnn_edge_scores = self.gnn_model.forward(senders, receivers)
+            self._print_memory_usage("After GNN")
+            # apply sigmoid
+            gnn_edge_scores = torch.sigmoid(gnn_edge_scores)
+
+            # evaluate the edge scores
+            gnn_perf = self.edge_perf.eval_edge_scores(
+                gnn_edge_scores, truth_labels,
+                outname="perf_gnn_evt{}".format(evtid))
 
         return dict(
             edge_index=edge_index,

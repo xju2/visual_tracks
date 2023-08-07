@@ -62,7 +62,8 @@ class EdgePerformance:
         """
         edge_score = edge_score.detach().cpu().numpy()
         truth_labels = truth_labels.detach().cpu().numpy()
-        plot_metrics(edge_score, truth_labels, outname=outname)
+        results = plot_metrics(edge_score, truth_labels, outname=outname)
         if edge_weights is not None:
             target_score, target_truth = edge_score[edge_weights > edge_weight_cuts], truth_labels[edge_weights > edge_weight_cuts]
-            plot_metrics(target_score, target_truth, outname=outname + "-target")
+            target_results = plot_metrics(target_score, target_truth, outname=outname + "-target")
+        return results

@@ -1,6 +1,7 @@
 """Plot the performance for classification tasks"""
 
 from typing import Optional
+import numpy as np
 import matplotlib.pyplot as plt
 
 import sklearn.metrics
@@ -66,12 +67,30 @@ def plot_metrics(odd, tdd, odd_th=0.5,
     ax1.tick_params(width=2, grid_alpha=0.5, labelsize=minor_size)
     print("AUC: %.4f" % auc)
 
+    # Plot the purity and efficiency
     p, r, t = sklearn.metrics.precision_recall_curve(y_true, odd)
     ax2.plot(t, p[:-1], label='purity', lw=2)
     ax2.plot(t, r[:-1], label='efficiency', lw=2)
     ax2.set_xlabel('Cut on model score', fontsize=fontsize)
     ax2.tick_params(width=2, grid_alpha=0.5, labelsize=minor_size)
     ax2.legend(fontsize=fontsize, loc='upper right')
+    ax2.grid(True)
+    # Find the point efficiency = 99% and print the purity
+    idx = (np.abs(r[:-1] - 0.99)).argmin()
+    if r[idx] < 0.99:
+        idx -= 1
+    print('Purity at {:.4f} efficiency: {:.4f} with cut {:.4f}'.format(
+        p[idx], r[idx], t[idx]))
+    # draw dashed lines in the purity and efficiency plots for this point
+    ax2.axvline(t[idx], color='k', linestyle='--', lw=2)
+    # add a text box with the purity and efficiency
+    ax2.text(0.11, 0.6,
+             'Purity: {:.2f}%\nEfficiency: {:.2f}%\nCut: {:.4f}'.format(
+                100*p[idx], 100*r[idx], t[idx]),
+             transform=ax2.transAxes, fontsize=fontsize,
+             verticalalignment='center', horizontalalignment='left',
+             bbox=dict(boxstyle='round', facecolor='green', alpha=0.5))
+
 
     ax3.plot(p, r, lw=2)
     ax3.set_xlabel('Purity', fontsize=fontsize)
@@ -84,3 +103,4 @@ def plot_metrics(odd, tdd, odd_th=0.5,
 
     if off_interactive:
         plt.close(fig)
+    return fig, axs, auc, r[idx], p[idx], t[idx]

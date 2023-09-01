@@ -12,7 +12,9 @@ minor_size = 14
 def plot_metrics(odd, tdd, odd_th=0.5,
                  tdd_th=0.5,
                  outname: Optional[str] = 'roc_graph_nets',
-                 off_interactive=False, alternative=True):
+                 off_interactive=False, alternative=True,
+                 target_efficiency=0.99
+                 ):
     if off_interactive:
         plt.ioff()
 
@@ -76,8 +78,8 @@ def plot_metrics(odd, tdd, odd_th=0.5,
     ax2.legend(fontsize=fontsize, loc='upper right')
     ax2.grid(True)
     # Find the point efficiency = 99% and print the purity
-    idx = (np.abs(r[:-1] - 0.99)).argmin()
-    if r[idx] < 0.99:
+    idx = (np.abs(r[:-1] - target_efficiency)).argmin()
+    if r[idx] < target_efficiency:
         idx -= 1
     print('Purity at {:.4f} efficiency: {:.4f} with cut {:.4f}'.format(
         p[idx], r[idx], t[idx]))

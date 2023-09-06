@@ -1,6 +1,8 @@
 """This module evaluates the per-edge performance"""
 
-from typing import Any, Optional
+from typing import Any, Optional, Union
+
+import numpy as np
 import torch
 from acctrack.tools.utils_graph import graph_intersection
 from acctrack.viewer.classification import plot_metrics
@@ -52,7 +54,8 @@ class EdgePerformance:
 
         return truth_labels, true_edges, per_edge_efficiency, per_edge_purity
 
-    def eval_edge_scores(self, edge_score: torch.Tensor, truth_labels: torch.Tensor,
+    def eval_edge_scores(self, edge_score: Union[torch.Tensor, np.ndarray],
+                         truth_labels: Union[torch.Tensor, np.ndarray],
                          edge_weights: Optional[torch.Tensor] = None,
                          edge_weight_cuts: float = 0,
                          outname: Optional[str] = None):
@@ -60,8 +63,11 @@ class EdgePerformance:
         If edge_weights is not None, only plot the edges with weights > edge_weight_cuts.
         Edge weights are used mostly to remove edges that are true but not of interests (non-signal edges).
         """
-        edge_score = edge_score.detach().cpu().numpy()
-        truth_labels = truth_labels.detach().cpu().numpy()
+        if isinstance(edge_score, torch.Tensor):
+            edge_score = edge_score.detach().cpu().numpy()
+        if isinstance(truth_labels, torch.Tensor):
+            truth_labels = truth_labels.detach().cpu().numpy()
+
         results = plot_metrics(edge_score, truth_labels, outname=outname)
         if edge_weights is not None:
             target_score, target_truth = edge_score[edge_weights > edge_weight_cuts], truth_labels[edge_weights > edge_weight_cuts]

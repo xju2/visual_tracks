@@ -17,8 +17,8 @@ class TrackGraphDataReader(BaseTrackDataReader):
         self.nevts = len(self.pyg_files)
 
         # get event ids.
-        pattern = "event\[\[(.*)\]\].pyg"
-        regrex = re.compile(pattern)
+        # pattern = "event\[\[(.*)\]\].pyg"
+        regrex = re.compile("event([0-9]*).pyg")
 
         def find_evt_info(x):
             matched = regrex.search(x.name)

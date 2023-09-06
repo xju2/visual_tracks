@@ -9,21 +9,27 @@ from torch_geometric.nn import radius
 
 try:
     import frnn
+
     FRNN_AVAILABLE = True
     logging.warning("FRNN is available")
 except ImportError:
     FRNN_AVAILABLE = False
-    logging.warning("FRNN is not available, install it at https://github.com/murnanedaniel/FRNN. Using PyG radius instead.")
+    logging.warning(
+        "FRNN is not available, install it at https://github.com/murnanedaniel/FRNN. Using PyG radius instead."
+    )
 
 faiss_avail = False
 try:
     import faiss
+
     faiss_avail = True
     logging.warning("FAISS is available")
 except ImportError:
     faiss_avail = False
-    logging.warning("FAISS is not available, install it at \"conda install faiss-gpu -c pytorch\" or \
-                    \"pip install faiss-gpu\". Using PyG radius instead.")
+    logging.warning(
+        'FAISS is not available, install it at "conda install faiss-gpu -c pytorch" or \
+                    "pip install faiss-gpu". Using PyG radius instead.'
+    )
 
 if not torch.cuda.is_available():
     FRNN_AVAILABLE = False
@@ -33,6 +39,7 @@ if not torch.cuda.is_available():
 # ---------------------------- Dataset Processing -------------------------
 
 # ---------------------------- Edge Building ------------------------------
+
 
 def build_edges(
     embedding: torch.Tensor,
@@ -62,14 +69,20 @@ def build_edges(
         )
 
         idxs: torch.Tensor = idxs.squeeze().int()
-        ind = torch.arange(idxs.shape[0], device=embedding.device).repeat(idxs.shape[1], 1).T.int()
+        ind = (
+            torch.arange(idxs.shape[0], device=embedding.device)
+            .repeat(idxs.shape[1], 1)
+            .T.int()
+        )
         positive_idxs = idxs >= 0
         edge_list = torch.stack([ind[positive_idxs], idxs[positive_idxs]]).long()
     elif faiss_avail and "faiss" in backend:
         emebdding_array = embedding.detach().cpu().numpy()
         if backend == "faiss-cpu-ivf":
             quantizer = faiss.IndexFlatL2(embedding.shape[1])
-            index = faiss.IndexIVFFlat(quantizer, embedding.shape[1], nlist, faiss.METRIC_L2)
+            index = faiss.IndexIVFFlat(
+                quantizer, embedding.shape[1], nlist, faiss.METRIC_L2
+            )
             index.train(emebdding_array)
             # default # of probes is 1
             index.nprobe = nprobe
@@ -84,14 +97,18 @@ def build_edges(
             index.train(emebdding_array)
             index.add(emebdding_array)
             dists, idxs = index.search(emebdding_array, k_max)
-        elif backend == "faiss-gpu" and torch.cuda.is_available():   # GPU version
+        elif backend == "faiss-gpu" and torch.cuda.is_available():  # GPU version
             res = faiss.StandardGpuResources()
             index_flat = faiss.GpuIndexFlatL2(res, embedding.shape[1])
             index_flat.add(emebdding_array)
             dists, idxs = index_flat.search(emebdding_array, k_max)
-        elif backend == "faiss-gpu-quantized" and torch.cuda.is_available():   # GPU version
+        elif (
+            backend == "faiss-gpu-quantized" and torch.cuda.is_available()
+        ):  # GPU version
             res = faiss.StandardGpuResources()
-            index = faiss.GpuIndexIVFFlat(res, embedding.shape[1], nlist, faiss.METRIC_L2)
+            index = faiss.GpuIndexIVFFlat(
+                res, embedding.shape[1], nlist, faiss.METRIC_L2
+            )
             print("after gpu index")
             index.train(emebdding_array)
             print("after train")
@@ -103,12 +120,18 @@ def build_edges(
             dists, idxs = index.search(emebdding_array, k_max)
             print("after search")
         else:
-            raise ValueError(f"faiss is available, but the mode {backend} is not supported,"
-                             "please chose faiss-cpu, faiss-cpu-quantized, or faiss-gpu")
+            raise ValueError(
+                f"faiss is available, but the mode {backend} is not supported,"
+                "please chose faiss-cpu, faiss-cpu-quantized, or faiss-gpu"
+            )
 
         dists, idxs = torch.from_numpy(dists), torch.from_numpy(idxs)
-        ind = torch.arange(idxs.shape[0], device=embedding.device).repeat(idxs.shape[1], 1).T.int()
-        positive_idxs = (dists <= r_max**2)
+        ind = (
+            torch.arange(idxs.shape[0], device=embedding.device)
+            .repeat(idxs.shape[1], 1)
+            .T.int()
+        )
+        positive_idxs = dists <= r_max**2
         edge_list = torch.stack([ind[positive_idxs], idxs[positive_idxs]]).long()
     else:
         edge_list = radius(embedding, embedding, r=r_max, max_num_neighbors=k_max)
@@ -120,10 +143,16 @@ def build_edges(
     # Remove self-loops
     edge_list = edge_list[:, edge_list[0] != edge_list[1]]
 
-    return (edge_list, dists, idxs, ind) if (return_indices and backend=="FRNN") else edge_list
+    return (
+        (edge_list, dists, idxs, ind)
+        if (return_indices and backend == "FRNN")
+        else edge_list
+    )
 
 
-def graph_intersection(edge_index: torch.Tensor, true_edges: torch.Tensor) -> torch.Tensor:
+def graph_intersection(
+    edge_index: torch.Tensor, true_edges: torch.Tensor
+) -> torch.Tensor:
     """
     Use sparse representation to compare the predicted graph
     and the truth graph so as to label the edges in the predicted graph
@@ -137,18 +166,27 @@ def graph_intersection(edge_index: torch.Tensor, true_edges: torch.Tensor) -> to
 
     # unique edges in the union of the predicted and truth edges
     # inverse is the index of the unique edges in the union
-    unique_edges, inverse = torch.unique(torch.cat([edge_index, true_edges], dim=1),
-                                         dim=1, sorted=False, return_inverse=True, return_counts=False)
+    unique_edges, inverse = torch.unique(
+        torch.cat([edge_index, true_edges], dim=1),
+        dim=1,
+        sorted=False,
+        return_inverse=True,
+        return_counts=False,
+    )
 
     predict_in_unique_edges = inverse[:num_reco_edges]
 
     # among the unique edges, which are from the predicted graph
     unique_edge_from_reco = torch.ones_like(unique_edges[1]).to(device) * -1
-    unique_edge_from_reco[inverse[:num_reco_edges]] = torch.arange(num_reco_edges, device=device)
+    unique_edge_from_reco[inverse[:num_reco_edges]] = torch.arange(
+        num_reco_edges, device=device
+    )
 
     # among the unique edges, which are from the truth graph
     unique_edge_from_truth = torch.ones_like(unique_edges[1]).to(device) * -1
-    unique_edge_from_truth[inverse[num_reco_edges:]] = torch.arange(true_edges.shape[1], device=device)
+    unique_edge_from_truth[inverse[num_reco_edges:]] = torch.arange(
+        true_edges.shape[1], device=device
+    )
 
     # which edges in the predicted graph are also in the truth graph
     edge_index_truth = unique_edge_from_truth[predict_in_unique_edges] >= 0

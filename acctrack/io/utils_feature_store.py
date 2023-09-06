@@ -7,13 +7,14 @@ import itertools
 
 scales = np.array([1000, np.pi, 1000], dtype=np.float32)
 
-particle_features = [
-    'particle_id', 'pt', 'eta',
-    'vx', 'vy', 'vz', 'radius'
-]
+particle_features = ["particle_id", "pt", "eta", "vx", "vy", "vz", "radius"]
 cluster_shape_features = [
-    'len_u', 'len_v', 'cell_count', 'cell_val',
+    "len_u",
+    "len_v",
+    "cell_count",
+    "cell_val",
 ]
+
 
 def save_to_np(outname, data):
     hits = data.spacepoints
@@ -25,19 +26,24 @@ def save_to_np(outname, data):
 
     np.savez_compressed(
         outname,
-        x=hits[['r', 'phi', 'z']].values / scales,
-        pid=hits['particle_id'].values,
-        hid=hits['hit_id'].values,
+        x=hits[["r", "phi", "z"]].values / scales,
+        pid=hits["particle_id"].values,
+        hid=hits["hit_id"].values,
         true_edges=edges,
         particles=data.particles[particle_features].values,
-        cells=cells
+        cells=cells,
     )
 
 
-def load_from_np(fname, edge_name='true_edges'):
+def load_from_np(fname, edge_name="true_edges"):
     arrays = np.load(fname)
-    hits, pids, true_edges, cells, particles = \
-        arrays['x'], arrays['pid'], arrays[edge_name], arrays['cells'], arrays['particles']
+    hits, pids, true_edges, cells, particles = (
+        arrays["x"],
+        arrays["pid"],
+        arrays[edge_name],
+        arrays["cells"],
+        arrays["particles"],
+    )
     return (hits, pids, true_edges, cells, particles)
 
 

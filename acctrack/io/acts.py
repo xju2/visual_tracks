@@ -20,24 +20,29 @@ import pandas as pd
 
 
 class ActsReader(BaseTrackDataReader):
-    def __init__(self, inputdir: str, output_dir: str = None,
-                 overwrite: bool = True, name: str = "ActsReader",
-                 spname: str = 'spacepoint'):
+    def __init__(
+        self,
+        inputdir: str,
+        output_dir: str = None,
+        overwrite: bool = True,
+        name: str = "ActsReader",
+        spname: str = "spacepoint",
+    ):
         super().__init__(inputdir, output_dir, overwrite, name)
         self.spname = spname
 
         # count how many events in the directory
-        all_evts = glob.glob(os.path.join(
-            self.basedir, "event*-{}.csv".format(spname)))
+        all_evts = glob.glob(os.path.join(self.basedir, "event*-{}.csv".format(spname)))
 
         pattern = "event([0-9]*)-{}.csv".format(spname)
-        self.all_evtids = sorted([
-            int(re.search(pattern, os.path.basename(x)).group(1).strip())
-            for x in all_evts])
+        self.all_evtids = sorted(
+            [
+                int(re.search(pattern, os.path.basename(x)).group(1).strip())
+                for x in all_evts
+            ]
+        )
         self.nevts = len(self.all_evtids)
-        print("total {} events in directory: {}".format(
-            self.nevts, self.basedir))
-
+        print("total {} events in directory: {}".format(self.nevts, self.basedir))
 
     def read(self, evtid: int = None) -> bool:
         """Read one event from the input directory.
@@ -52,13 +57,13 @@ class ActsReader(BaseTrackDataReader):
         hit_fname = "{}-hits.csv".format(prefix)
         measurements_fname = "{}-measurements.csv".format(prefix)
         measurements2hits_fname = "{}-measurement-simhit-map.csv".format(prefix)
-        sp_fname = '{}-{}.csv'.format(prefix, self.spname)
-        p_name = '{}-particles_final.csv'.format(prefix)
+        sp_fname = "{}-{}.csv".format(prefix, self.spname)
+        p_name = "{}-particles_final.csv".format(prefix)
 
         # read hit files
         hits = pd.read_csv(hit_fname)
         hits = hits[hits.columns[:-1]]
-        hits = hits.reset_index().rename(columns={'index': 'hit_id'})
+        hits = hits.reset_index().rename(columns={"index": "hit_id"})
 
         # read measurements, maps to hits, and spacepoints
         measurements = pd.read_csv(measurements_fname)
@@ -75,36 +80,41 @@ class ActsReader(BaseTrackDataReader):
         particles = particles.assign(pt=pt, radius=radius, eta=eta)
 
         # read cluster information
-        cell_fname = '{}-cells.csv'.format(prefix)
+        cell_fname = "{}-cells.csv".format(prefix)
         cells = pd.read_csv(cell_fname)
 
         # calculate cluster shape information
-        direction_count_u = cells.groupby(['hit_id']).channel0.agg(['min', 'max'])
-        direction_count_v = cells.groupby(['hit_id']).channel1.agg(['min', 'max'])
-        nb_u = direction_count_u['max'] - direction_count_u['min'] + 1
-        nb_v = direction_count_v['max'] - direction_count_v['min'] + 1
-        hit_cells = cells.groupby(['hit_id']).value.count().values
-        hit_value = cells.groupby(['hit_id']).value.sum().values
+        direction_count_u = cells.groupby(["hit_id"]).channel0.agg(["min", "max"])
+        direction_count_v = cells.groupby(["hit_id"]).channel1.agg(["min", "max"])
+        nb_u = direction_count_u["max"] - direction_count_u["min"] + 1
+        nb_v = direction_count_v["max"] - direction_count_v["min"] + 1
+        hit_cells = cells.groupby(["hit_id"]).value.count().values
+        hit_value = cells.groupby(["hit_id"]).value.sum().values
         # as I don't access to the rotation matrix and the pixel pitches,
         # I can't calculate cluster's local/global position
         sp = sp.assign(len_u=nb_u, len_v=nb_v, cell_count=hit_cells, cell_val=hit_value)
 
-
-        sp_hits = sp.merge(meas2hits, on='measurement_id', how='left').merge(
-            hits, on='hit_id', how='left')
+        sp_hits = sp.merge(meas2hits, on="measurement_id", how="left").merge(
+            hits, on="hit_id", how="left"
+        )
         sp_hits = sp_hits.merge(
-            particles[['particle_id', 'vx', 'vy', 'vz']], on='particle_id', how='left')
+            particles[["particle_id", "vx", "vy", "vz"]], on="particle_id", how="left"
+        )
 
         r = np.sqrt(sp_hits.x**2 + sp_hits.y**2)
         phi = np.arctan2(sp_hits.y, sp_hits.x)
         sp_hits = sp_hits.assign(r=r, phi=phi)
 
-        sp_hits = sp_hits.assign(R=np.sqrt(
-            (sp_hits.x - sp_hits.vx)**2
-            + (sp_hits.y - sp_hits.vy)**2
-            + (sp_hits.z - sp_hits.vz)**2))
-        sp_hits = sp_hits.sort_values('R').reset_index(
-            drop=True).reset_index(drop=False)
+        sp_hits = sp_hits.assign(
+            R=np.sqrt(
+                (sp_hits.x - sp_hits.vx) ** 2
+                + (sp_hits.y - sp_hits.vy) ** 2
+                + (sp_hits.z - sp_hits.vz) ** 2
+            )
+        )
+        sp_hits = (
+            sp_hits.sort_values("R").reset_index(drop=True).reset_index(drop=False)
+        )
 
         edges = make_true_edges(sp_hits)
         self.particles = particles

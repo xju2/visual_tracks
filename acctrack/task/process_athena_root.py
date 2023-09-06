@@ -3,10 +3,11 @@ from acctrack.task.base import TaskBase
 
 from acctrack.io.athena_raw_root import AthenaRawRootReader
 
+
 class ProcessRawAthenaRoot(TaskBase):
-    def __init__(self, reader: AthenaRawRootReader,
-                 num_workers: int = 1,
-                 **kwargs) -> None:
+    def __init__(
+        self, reader: AthenaRawRootReader, num_workers: int = 1, **kwargs
+    ) -> None:
         super().__init__()
         self.save_hyperparameters(ignore=["reader"])
 
@@ -22,5 +23,6 @@ class ProcessRawAthenaRoot(TaskBase):
                 self.run_one_task(idx)
         else:
             from multiprocessing import Pool
+
             with Pool(num_workers) as p:
                 p.map(self.run_one_task, list(range(self.reader.num_files)))

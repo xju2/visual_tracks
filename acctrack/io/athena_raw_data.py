@@ -30,11 +30,11 @@ from acctrack.io.base import BaseTrackDataReader
 from acctrack.io import utils_athena_raw as reader_utils
 from acctrack.io import utils as io_utils
 
+
 class AthenaRawDataReader(BaseTrackDataReader):
-    def __init__(self, inputdir,
-                 output_dir=None,
-                 overwrite=False,
-                 name="AthenaRawDataReader"):
+    def __init__(
+        self, inputdir, output_dir=None, overwrite=False, name="AthenaRawDataReader"
+    ):
         super().__init__(inputdir, output_dir, overwrite, name)
 
         # find number of events in the directory
@@ -55,8 +55,7 @@ class AthenaRawDataReader(BaseTrackDataReader):
         self.all_evtids = [find_evt_info(x) for x in all_evts]
         self.all_evtids = [x for x in self.all_evtids if x is not None]
         self.nevts = len(self.all_evtids)
-        print("Total {} events in directory: {}".format(
-            self.nevts, self.inputdir))
+        print("Total {} events in directory: {}".format(self.nevts, self.inputdir))
 
     def getnamepatch(self, evtid, run_number, event_number):
         """Get the postfix for the given event id or event number"""
@@ -65,7 +64,9 @@ class AthenaRawDataReader(BaseTrackDataReader):
         elif event_number is not None:
             event_info = [x for x in self.all_evtids if x[2] == event_number]
             if len(event_info) == 0:
-                raise ValueError("Cannot find the event with event number: {}".format(event_number))
+                raise ValueError(
+                    "Cannot find the event with event number: {}".format(event_number)
+                )
             event_info = event_info[0]
         else:
             raise ValueError("Please provide either evtid or event_number or nothing")
@@ -73,21 +74,33 @@ class AthenaRawDataReader(BaseTrackDataReader):
         evtid, run_number, event_number = event_info
         return "_evt{}-{}_{}".format(evtid, run_number, event_number)
 
-
-    def get_filename(self, prefix, evtid, run_number, event_number, suffix="txt") -> str:
+    def get_filename(
+        self, prefix, evtid, run_number, event_number, suffix="txt"
+    ) -> str:
         """Get the input filename for the given event id or event number"""
         namepatch = self.getnamepatch(evtid, run_number, event_number)
         return self.inputdir / "{}{}.{}".format(prefix, namepatch, suffix)
 
-    def get_outname(self, prefix, evtid, run_number, event_number, suffix="parquet", **kwargs) -> str:
+    def get_outname(
+        self, prefix, evtid, run_number, event_number, suffix="parquet", **kwargs
+    ) -> str:
         """Get the filename for the given event id or event number"""
         namepatch = self.getnamepatch(evtid, run_number, event_number)
         return self.outdir / "{}{}.{}".format(prefix, namepatch, suffix)
 
-    def read_wrap(self, read_fn: Callable[[str], Union[pd.DataFrame, Any]],
-                  prefix, evtid=None, run_number=None, event_number=None, **kwargs):
+    def read_wrap(
+        self,
+        read_fn: Callable[[str], Union[pd.DataFrame, Any]],
+        prefix,
+        evtid=None,
+        run_number=None,
+        event_number=None,
+        **kwargs,
+    ):
         """Read the data from the input directory"""
-        outname = Path(self.get_outname(prefix, evtid, run_number, event_number, **kwargs))
+        outname = Path(
+            self.get_outname(prefix, evtid, run_number, event_number, **kwargs)
+        )
         if outname.exists() and not self.overwrite:
             return io_utils.load_data(outname)
 
@@ -96,7 +109,9 @@ class AthenaRawDataReader(BaseTrackDataReader):
         io_utils.save_data(df, outname)
         return df
 
-    def read_track_candidates(self, evtid=None, run_number=None, event_number=None) -> List[List[int]]:
+    def read_track_candidates(
+        self, evtid=None, run_number=None, event_number=None
+    ) -> List[List[int]]:
         """Read track candidates from the input directory
 
         Return:
@@ -104,10 +119,17 @@ class AthenaRawDataReader(BaseTrackDataReader):
         """
         self.tracks = self.read_wrap(
             reader_utils.read_track_candidates,
-            "trackcandidates", evtid, run_number, event_number, suffix="pkl")
+            "trackcandidates",
+            evtid,
+            run_number,
+            event_number,
+            suffix="pkl",
+        )
         return self.tracks
 
-    def read_track_candidates_clusters(self, evtid=None, run_number=None, event_number=None) -> List[List[int]]:
+    def read_track_candidates_clusters(
+        self, evtid=None, run_number=None, event_number=None
+    ) -> List[List[int]]:
         """Read track candidates from the input directory
 
         Return:
@@ -115,10 +137,17 @@ class AthenaRawDataReader(BaseTrackDataReader):
         """
         self.tracks_clusters = self.read_wrap(
             reader_utils.read_track_candidates_clusters,
-            "trackcandidates_clusters", evtid, run_number, event_number, suffix="pkl")
+            "trackcandidates_clusters",
+            evtid,
+            run_number,
+            event_number,
+            suffix="pkl",
+        )
         return self.tracks_clusters
 
-    def read_spacepoints(self, evtid=None, run_number=None, event_number=None) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def read_spacepoints(
+        self, evtid=None, run_number=None, event_number=None
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Read spacepoints from the input directory
 
         Return:
@@ -126,16 +155,24 @@ class AthenaRawDataReader(BaseTrackDataReader):
         """
         self.spacepoints = self.read_wrap(
             reader_utils.read_spacepoints,
-            "spacepoints", evtid, run_number, event_number)
+            "spacepoints",
+            evtid,
+            run_number,
+            event_number,
+        )
         return self.spacepoints
 
-    def read_clusters(self, evtid=None, run_number=None, event_number=None) -> pd.DataFrame:
+    def read_clusters(
+        self, evtid=None, run_number=None, event_number=None
+    ) -> pd.DataFrame:
         """Read clusters from the input directory
         Return:
             pd.DataFrame: clusters
         """
         filename = self.get_filename("clusters", evtid, run_number, event_number)
-        cell_split_df = pd.read_csv(filename, header=None, engine='python', sep=r",#,|#,|,#")
+        cell_split_df = pd.read_csv(
+            filename, header=None, engine="python", sep=r",#,|#,|,#"
+        )
 
         cell_df = pd.DataFrame()
 
@@ -143,9 +180,14 @@ class AthenaRawDataReader(BaseTrackDataReader):
         cell_df[
             ["cluster_id", "hardware", "cluster_x", "cluster_y", "cluster_z"]
         ] = cell_split_df[0].str.split(",", expand=True)
-        cell_df = cell_df.astype({"cluster_id": "int32",
-                                  "cluster_x": "float32",
-                                  "cluster_y": "float32", "cluster_z": "float32"})
+        cell_df = cell_df.astype(
+            {
+                "cluster_id": "int32",
+                "cluster_x": "float32",
+                "cluster_y": "float32",
+                "cluster_z": "float32",
+            }
+        )
 
         # Split the detector geometry information
         cell_df[
@@ -160,10 +202,21 @@ class AthenaRawDataReader(BaseTrackDataReader):
             cell_df[["eta_angle", "phi_angle"]] = cell_shape_info[[0, 1]]
         elif cell_shape_info.shape[1] == 11:
             shape_feature_names = [
-                'cell_count', 'cell_val', 'leta', 'lphi',
-                'lx', 'ly', 'lz', 'geta', 'gphi', 'eta_angle', 'phi_angle'
+                "cell_count",
+                "cell_val",
+                "leta",
+                "lphi",
+                "lx",
+                "ly",
+                "lz",
+                "geta",
+                "gphi",
+                "eta_angle",
+                "phi_angle",
             ]
-            cell_df[shape_feature_names] = cell_shape_info[list(range(len(shape_feature_names)))]
+            cell_df[shape_feature_names] = cell_shape_info[
+                list(range(len(shape_feature_names)))
+            ]
         else:
             raise RuntimeError("Unknown cluster features", cell_shape_info.shape)
 
@@ -171,12 +224,14 @@ class AthenaRawDataReader(BaseTrackDataReader):
             ",", expand=True
         )[[0, 1, 2]]
 
-        if not hasattr(self, 'particles') or self.particles is None:
+        if not hasattr(self, "particles") or self.particles is None:
             self.read_particles(evtid, run_number, event_number)
 
         # Do some fiddling to split the cluster entry for truth particle,
         # which could have 0 true particles, 1 true particle, or many true particles
-        cleaned_cell_pids = cell_df[["cluster_id", "particle_id"]].astype({"particle_id": str})
+        cleaned_cell_pids = cell_df[["cluster_id", "particle_id"]].astype(
+            {"particle_id": str}
+        )
 
         split_pids = pd.DataFrame(
             [
@@ -186,16 +241,23 @@ class AthenaRawDataReader(BaseTrackDataReader):
             ],
             columns=cleaned_cell_pids.columns,
         )
-        split_pids = split_pids.join(split_pids.particle_id.str
-                                     .strip("()")
-                                     .str.split(",", expand=True)
-                                     .rename({0: "subevent", 1: "barcode"}, axis=1)
-                                     ).drop(columns=["particle_id", 2])
+        split_pids = split_pids.join(
+            split_pids.particle_id.str.strip("()")
+            .str.split(",", expand=True)
+            .rename({0: "subevent", 1: "barcode"}, axis=1)
+        ).drop(columns=["particle_id", 2])
 
-        split_pids["particle_id"] = split_pids.merge(self.particles[["subevent", "barcode", "particle_id"]]
-                                                         .astype({"subevent": str, "barcode": str}),
-                                                     how="left", on=["subevent", "barcode"]
-                                                     )["particle_id"].fillna(0).astype(int)
+        split_pids["particle_id"] = (
+            split_pids.merge(
+                self.particles[["subevent", "barcode", "particle_id"]].astype(
+                    {"subevent": str, "barcode": str}
+                ),
+                how="left",
+                on=["subevent", "barcode"],
+            )["particle_id"]
+            .fillna(0)
+            .astype(int)
+        )
 
         split_pids = split_pids[["cluster_id", "particle_id"]]
 
@@ -207,32 +269,40 @@ class AthenaRawDataReader(BaseTrackDataReader):
         self.clusters = cell_df
         return cell_df
 
-    def read_particles(self, evtid=None, run_number=None, event_number=None) -> pd.DataFrame:
+    def read_particles(
+        self, evtid=None, run_number=None, event_number=None
+    ) -> pd.DataFrame:
         """Read particles from the input directory
 
         Return:
             pd.DataFrame: particles
         """
         self.particles = self.read_wrap(
-            reader_utils.read_particles,
-            "particles", evtid, run_number, event_number)
+            reader_utils.read_particles, "particles", evtid, run_number, event_number
+        )
         return self.particles
 
     def read_true_track(self, evtid=None, run_number=None, event_number=None):
         """Read true track from the input directory"""
         self.true_tracks = self.read_wrap(
-            reader_utils.read_true_track,
-            "tracks", evtid, run_number, event_number)
+            reader_utils.read_true_track, "tracks", evtid, run_number, event_number
+        )
         return self.true_tracks
 
-    def read_detailed_matching(self, evtid=None, run_number=None, event_number=None) -> pd.DataFrame:
+    def read_detailed_matching(
+        self, evtid=None, run_number=None, event_number=None
+    ) -> pd.DataFrame:
         """Read Detailed True Track Collection from the input directory
         Return:
             pd.DataFrame: detailed matching
         """
         self.detailed_matching = self.read_wrap(
             reader_utils.read_detailed_matching,
-            "detailedtracktruth", evtid, run_number, event_number)
+            "detailedtracktruth",
+            evtid,
+            run_number,
+            event_number,
+        )
         return self.detailed_matching
 
     def _read(self, evtid=None, run_number=None, event_number=None) -> None:
@@ -268,12 +338,18 @@ class AthenaRawDataReader(BaseTrackDataReader):
         num_all_matched_to_truth = len(all_matched_to_truth)
 
         frac_all_matched_to_truth = num_all_matched_to_truth / len(detailed)
-        print(f"All matched to truth {self.name}: ",
-              num_all_matched_to_truth, len(detailed), frac_all_matched_to_truth)
+        print(
+            f"All matched to truth {self.name}: ",
+            num_all_matched_to_truth,
+            len(detailed),
+            frac_all_matched_to_truth,
+        )
 
         # Check that each reco track is matched to only one truth track
         _, counts = np.unique(all_matched_to_truth.trkid.values, return_counts=True)
-        assert np.all(counts == 1), "Some reco tracks are matched to multiple truth tracks"
+        assert np.all(
+            counts == 1
+        ), "Some reco tracks are matched to multiple truth tracks"
 
         self.tracks_matched_to_truth = all_matched_to_truth
 
@@ -283,7 +359,7 @@ class AthenaRawDataReader(BaseTrackDataReader):
         return "{} reads from {}.".format(self.name, self.inputdir)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     basedir = "/media/DataOcean/projects/tracking/integrateToAthena/run_21.9.26/RunOneEventForDebuging/GNN_noRemoval"
     reader = AthenaRawDataReader(basedir)
     print(reader)

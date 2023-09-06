@@ -12,7 +12,7 @@ def load_detector(detector_path, is_codalab_data: bool = True):
     detector_preproc = Path(detector_path).with_suffix(".pickle")
     if detector_preproc.exists():
         print("Loading detector...")
-        with open(detector_preproc, 'rb') as f:
+        with open(detector_preproc, "rb") as f:
             detector = pickle.load(f)
         print("Detector loaded.")
     else:
@@ -22,18 +22,17 @@ def load_detector(detector_path, is_codalab_data: bool = True):
                                                 "pitchY": "pitch_v"})
 
         detector = preprocess_detector(detector)
-        with open(detector_preproc, 'xb') as f:
+        with open(detector_preproc, "xb") as f:
             pickle.dump(detector, f)
         print("Detector preprocessed and saved.")
     return detector_orig, detector
+
 
 def preprocess_detector(detector):
     thicknesses = Detector_Thicknesses(detector).get_thicknesses()
     rotations = Detector_Rotations(detector).get_rotations()
     pixel_size = Detector_Pixel_Size(detector).get_pixel_size()
-    det = dict(thicknesses=thicknesses,
-               rotations=rotations,
-               pixel_size=pixel_size)
+    det = dict(thicknesses=thicknesses, rotations=rotations, pixel_size=pixel_size)
     return det
 
 
@@ -42,14 +41,15 @@ def determine_array_size(detector):
     unique_vols = detector.volume_id.unique()
     max_v = max(unique_vols) + 1
     for v in unique_vols:
-        vol = detector.loc[detector['volume_id'] == v]
+        vol = detector.loc[detector["volume_id"] == v]
         unique_layers = vol.layer_id.unique()
         max_l = max(max_l, max(unique_layers) + 1)
         for l in unique_layers:
-            lay = vol.loc[vol['layer_id'] == l]
+            lay = vol.loc[vol["layer_id"] == l]
             unique_modules = lay.module_id.unique()
             max_m = max(max_m, max(unique_modules) + 1)
     return max_v, max_l, max_m
+
 
 class Detector_Rotations(object):
     def __init__(self, detector):
@@ -72,12 +72,17 @@ class Detector_Rotations(object):
             rot = self._extract_rotation_matrix(r)
             self.rot[v, l, m] = rot
 
-    def _extract_rotation_matrix(self, mod) :
-        '''Extract the rotation matrix from module dataframe'''
-        r = np.matrix([[mod.rot_xu.item(), mod.rot_xv.item(), mod.rot_xw.item()],
-                      [mod.rot_yu.item(), mod.rot_yv.item(), mod.rot_yw.item()],
-                      [mod.rot_zu.item(), mod.rot_zv.item(), mod.rot_zw.item()]])
+    def _extract_rotation_matrix(self, mod):
+        """Extract the rotation matrix from module dataframe"""
+        r = np.matrix(
+            [
+                [mod.rot_xu.item(), mod.rot_xv.item(), mod.rot_xw.item()],
+                [mod.rot_yu.item(), mod.rot_yv.item(), mod.rot_yw.item()],
+                [mod.rot_zu.item(), mod.rot_zv.item(), mod.rot_zw.item()],
+            ]
+        )
         return r
+
 
 class Detector_Thicknesses(object):
     def __init__(self, detector):
@@ -98,6 +103,7 @@ class Detector_Thicknesses(object):
         for i, r in self.detector.iterrows():
             v, l, m = tuple(map(int, (r.volume_id, r.layer_id, r.module_id)))
             self.all_t[v, l, m] = r.module_t
+
 
 class Detector_Pixel_Size(object):
     def __init__(self, detector):

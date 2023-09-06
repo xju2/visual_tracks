@@ -2,16 +2,26 @@ from typing import List, Optional, Union
 from pathlib import Path
 import pandas as pd
 
+
 class BaseTrackDataReader:
     """Base class for reading Tracking data"""
 
-    def __init__(self, inputdir: Union[str, Path], output_dir: str = None,
-                 overwrite: bool = True, name="BaseTrackDataReader"):
+    def __init__(
+        self,
+        inputdir: Union[str, Path],
+        output_dir: str = None,
+        overwrite: bool = True,
+        name="BaseTrackDataReader",
+    ):
         self.inputdir = Path(inputdir) if isinstance(inputdir, str) else inputdir
         if not self.inputdir.exists() or not self.inputdir.is_dir():
-            raise FileNotFoundError(f"Input directory {self.inputdir} does not exist or is not a directory.")
+            raise FileNotFoundError(
+                f"Input directory {self.inputdir} does not exist or is not a directory."
+            )
 
-        self.outdir = Path(output_dir) if output_dir else self.inputdir / "processed_data"
+        self.outdir = (
+            Path(output_dir) if output_dir else self.inputdir / "processed_data"
+        )
         self.outdir.mkdir(parents=True, exist_ok=True)
 
         self.name = name

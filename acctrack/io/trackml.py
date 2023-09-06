@@ -20,7 +20,8 @@ from acctrack.io.utils_feature_store import make_true_edges
 from acctrack.io.trackml_cell_info import add_cluster_shape
 from acctrack.io.trackml_detector import load_detector
 
-__all__ = ['TrackMLReader', 'select_barrel_hits', 'remove_noise_hits']
+__all__ = ["TrackMLReader", "select_barrel_hits", "remove_noise_hits"]
+
 
 # predefined layer info
 # in Tracking ML, layer is defined by (volumn id and layer id)
@@ -37,30 +38,41 @@ vlids = [(7, 2), (7, 4), (7, 6), (7, 8), (7, 10), (7,12), (7, 14),
 n_det_layers = len(vlids)
 
 def select_barrel_hits(hits):
-    """Select barrel hits.
-    """
-    vlids = [(8, 2), (8, 4), (8, 6), (8, 8), (13, 2), (13, 4), (13, 6), (13, 8), (17, 2), (17, 4)]
+    """Select barrel hits."""
+    vlids = [
+        (8, 2),
+        (8, 4),
+        (8, 6),
+        (8, 8),
+        (13, 2),
+        (13, 4),
+        (13, 6),
+        (13, 8),
+        (17, 2),
+        (17, 4),
+    ]
     n_det_layers = len(vlids)
     # Select barrel layers and assign convenient layer number [0-9]
-    vlid_groups = hits.groupby(['volume_id', 'layer_id'])
-    hits = pd.concat([vlid_groups.get_group(vlids[i]).assign(layer=i)
-                      for i in range(n_det_layers)])
+    vlid_groups = hits.groupby(["volume_id", "layer_id"])
+    hits = pd.concat(
+        [vlid_groups.get_group(vlids[i]).assign(layer=i) for i in range(n_det_layers)]
+    )
     return hits
 
+
 def remove_noise_hits(hits):
-    """Remove noise hits.
-    """
+    """Remove noise hits."""
     # Remove noise hits
-    hits = hits[hits.hit_type != 'noise']
+    hits = hits[hits.hit_type != "noise"]
     return hits
+
 
 class TrackMLReader(BaseTrackDataReader):
     def __init__(self, basedir, name="TrackMLReader", is_codalab_data: bool = True) -> None:
         super().__init__(basedir, name)
         self.suffix = ".csv.gz" if is_codalab_data else "csv"
         # count how many events in the directory
-        all_evts = glob.glob(os.path.join(
-            self.inputdir, "event*-hits.csv*"))
+        all_evts = glob.glob(os.path.join(self.basedir, "event*-hits.csv"))
 
         self.nevts = len(all_evts)
         pattern = "event([0-9]*)-hits.csv"
@@ -101,7 +113,6 @@ class TrackMLReader(BaseTrackDataReader):
         self.num_pixel_modules = len(pixel_moudels)
         # Inverting the umid_dict
         self.umid_dict_inv = {v: k for k, v in umid_dict.items()}
-
 
     def read(self, evtid: int = None) -> bool:
         """Read one event from the input directory"""
@@ -155,8 +166,14 @@ class TrackMLReader(BaseTrackDataReader):
         cells = pd.read_csv(cell_fname)
         hits = add_cluster_shape(hits, cells, self.detector)
 
-        hits = hits.assign(R=np.sqrt((hits.x - hits.vx)**2 + (hits.y - hits.vy)**2 + (hits.z - hits.vz)**2))
-        hits = hits.sort_values('R').reset_index(drop=True).reset_index(drop=False)
+        hits = hits.assign(
+            R=np.sqrt(
+                (hits.x - hits.vx) ** 2
+                + (hits.y - hits.vy) ** 2
+                + (hits.z - hits.vz) ** 2
+            )
+        )
+        hits = hits.sort_values("R").reset_index(drop=True).reset_index(drop=False)
 
         self.spacepoints = hits
         self.true_edges = true_edges

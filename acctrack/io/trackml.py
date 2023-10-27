@@ -46,7 +46,7 @@ class TrackMLReader(BaseTrackDataReader):
 
         # count how many events in the directory
         all_evts = glob.glob(os.path.join(
-            self.basedir, "event*-hits.csv"))
+            self.inputdir, "event*-hits.csv"))
 
         self.nevts = len(all_evts)
         pattern = "event([0-9]*)-hits.csv"
@@ -55,9 +55,9 @@ class TrackMLReader(BaseTrackDataReader):
             for x in all_evts])
 
         print("total {} events in directory: {}".format(
-            self.nevts, self.basedir))
+            self.nevts, self.inputdir))
 
-        detector_path = os.path.join(self.basedir, "../detectors.csv")
+        detector_path = os.path.join(self.inputdir, "../detectors.csv")
         _, self.detector = load_detector(detector_path)
 
 
@@ -68,7 +68,7 @@ class TrackMLReader(BaseTrackDataReader):
             evtid = self.all_evtids[0]
             print("read event {}".format(evtid))
 
-        prefix = os.path.join(self.basedir, "event{:09d}".format(evtid))
+        prefix = os.path.join(self.inputdir, "event{:09d}".format(evtid))
         hit_fname = "{}-hits.csv".format(prefix)
         cell_fname = "{}-cells.csv".format(prefix)
         particle_fname = "{}-particles.csv".format(prefix)

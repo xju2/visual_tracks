@@ -1,22 +1,26 @@
 import pickle
 import numpy as np
 import pandas as pd
+from pathlib import Path
 
 #############################################
 #               DETECTOR UTILS              #
 #############################################
-def load_detector(detector_path):
+def load_detector(detector_path, is_codalab_data: bool = True):
     detector_orig = pd.read_csv(detector_path)
-    detector_pfx = detector_path.split('.')[0]
-    detector_preproc = detector_pfx + ".pickle"
-    try:
+
+    detector_preproc = Path(detector_path).with_suffix(".pickle")
+    if detector_preproc.exists():
         print("Loading detector...")
         with open(detector_preproc, 'rb') as f:
             detector = pickle.load(f)
         print("Detector loaded.")
-    except FileNotFoundError:
-        print("Failed to load preprocessed detector. Building...")
+    else:
         detector = pd.read_csv(detector_path)
+        if is_codalab_data:
+            detector = detector.rename(columns={"pitchX": 'pitch_u',
+                                                "pitchY": "pitch_v"})
+
         detector = preprocess_detector(detector)
         with open(detector_preproc, 'xb') as f:
             pickle.dump(detector, f)

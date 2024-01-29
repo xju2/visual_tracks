@@ -1,0 +1,27 @@
+{
+    "name": "CentOS 7",
+    "image": "docexoty/exatrkx:cuda12-pytorch2.1",
+
+    "runArgs": [
+        "-v", "/media/DataOcean:/media/DataOcean:cached",
+        "-v", "/media/DataLake:/media/DataLake:cached"
+    ],
+
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.shell.linux": "/bin/bash"
+            },
+
+            "extensions": [
+                "ms-vscode.cpptools",
+                "ms-python.python",
+                "twxs.cmake",
+                "GitHub.copilot",
+                "eamodio.gitlens",
+                "ms-vscode.cpptools-extension-pack",
+                "charliermarsh.ruff"
+            ]
+        }
+    }
+}

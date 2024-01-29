@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 
-def dumpITkTrackCandidates(filename: str, tree_name: str = "GNN4ITk"):
+def dumpITkTrackCandidates(filename: str, tree_name: str = "GNN4ITk", num_evts: int = 1):
     events = uproot.open(f"{filename}:{tree_name}")
     tracks_info = events.arrays(
         [
@@ -18,7 +18,8 @@ def dumpITkTrackCandidates(filename: str, tree_name: str = "GNN4ITk"):
         ]
     )
     event_info = events.arrays(["event_number", "run_number"])
-    num_events = len(event_info["event_number"])
+    spacepoints_info = events.arrays(["m_SPx", "m_SPy"])
+    num_events = len(event_info["event_number"]) if num_evts == -1 else num_evts
     print(f"Number of events: {num_events}")
 
     num_tracks = []
@@ -30,6 +31,8 @@ def dumpITkTrackCandidates(filename: str, tree_name: str = "GNN4ITk"):
     for ievt in range(num_events):
         event_number = event_info["event_number"][ievt]
         run_number = event_info["run_number"][ievt]
+        spacepoint_x = spacepoints_info["m_SPx"][ievt].to_numpy()
+        spacepoint_y = spacepoints_info["m_SPy"][ievt].to_numpy()
 
         track_info = tracks_info[ievt]
         hit_id = track_info["TRKspacepointsIdxOnTrack"].to_numpy()
@@ -74,6 +77,13 @@ def dumpITkTrackCandidates(filename: str, tree_name: str = "GNN4ITk"):
                     unique_hits.append(hit)
                 else:
                     pass
+
+            x_spacepoints_in_track, y_spacepoints_in_track = spacepoint_x[unique_hits], spacepoint_y[unique_hits]
+
+            # sort spacepoints by r, r = sqrt(x^2 + y^2)
+            r_spacepoints_in_track = np.sqrt(x_spacepoints_in_track**2 + y_spacepoints_in_track**2)
+            sorted_idx = np.argsort(r_spacepoints_in_track)
+            unique_hits = unique_hits[sorted_idx]
 
             num_good_strip_sp_per_track.append(len(unique_hits))
 
@@ -166,7 +176,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("filename", help="The ROOT file produced by DumpObject")
     parser.add_argument("--tree-name", default="GNN4ITk", help="The name of the tree")
+    parser.add_argument("--num-evts", type=int, default=1, help="Number of events to process")
     args = parser.parse_args()
 
-    dumpITkTrackCandidates(args.filename, args.tree_name)
+    dumpITkTrackCandidates(args.filename, args.tree_name, args.num_evts)
     # dumpITkTrackDetails(args.filename, args.tree_name)

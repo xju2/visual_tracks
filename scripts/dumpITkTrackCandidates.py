@@ -7,15 +7,23 @@ import uproot
 import numpy as np
 import pandas as pd
 
+
 def dumpITkTrackCandidates(filename: str, tree_name: str = "GNN4ITk"):
     events = uproot.open(f"{filename}:{tree_name}")
-    tracks_info = events.arrays(["TRKspacepointsIdxOnTrack", "TRKspacepointsIdxOnTrack_trkIndex", "TRKspacepointsIsPixel"])
+    tracks_info = events.arrays(
+        [
+            "TRKspacepointsIdxOnTrack",
+            "TRKspacepointsIdxOnTrack_trkIndex",
+            "TRKspacepointsIsPixel",
+        ]
+    )
     event_info = events.arrays(["event_number", "run_number"])
     num_events = len(event_info["event_number"])
     print(f"Number of events: {num_events}")
 
     num_tracks = []
     num_clusters_per_track = []
+    num_si_clusters_per_track = []
     num_pixel_clusters_per_track = []
     num_sp_per_track = []
     num_good_strip_sp_per_track = []
@@ -28,19 +36,21 @@ def dumpITkTrackCandidates(filename: str, tree_name: str = "GNN4ITk"):
         track_id = track_info["TRKspacepointsIdxOnTrack_trkIndex"].to_numpy()
         is_pixel = track_info["TRKspacepointsIsPixel"].to_numpy()
 
-        track_info = pd.DataFrame({
-            "hit_id": hit_id,
-            "track_id": track_id,
-            "is_pixel": is_pixel
-            })
+        track_info = pd.DataFrame(
+            {"hit_id": hit_id, "track_id": track_id, "is_pixel": is_pixel}
+        )
         tracks = track_info.groupby("track_id")
 
         output_str = ""
         itrk = 0
         for track in tracks:
             num_clusters_per_track.append(len(track[1].hit_id))
+            num_si_clusters_per_track.append(
+                len([x for x in track[1].hit_id if x != -1])
+            )
             num_pixel_clusters_per_track.append(
-                len([x for x in track[1].is_pixel if x == 1]))
+                len([x for x, y in zip(track[1].hit_id, track[1].is_pixel) if x != 1 and y == 1])
+            )
 
             silicon_hits = [x for x in track[1].hit_id if x != -1]
             # remove duplicated hits while keeping the order
@@ -51,15 +61,16 @@ def dumpITkTrackCandidates(filename: str, tree_name: str = "GNN4ITk"):
 
             num_sp_per_track.append(len(final_hit_id))
 
-            # remove strip spacepoints if they do not have two cluters
+            # remove ghost space points,
+            # defined as those have only one cluster in the track candidate
             unique_hits = []
             for idx, hit in enumerate(silicon_hits[:-1]):
                 if hit == -1:
                     continue
-                if track[1].is_pixel[idx] == 0:
-                    if hit == silicon_hits[idx+1]:
+                if track[1].is_pixel.iloc[idx] == 0:
+                    if hit == silicon_hits[idx + 1]:
                         unique_hits.append(hit)
-                elif track[1].is_pixel[idx] == 1:
+                elif track[1].is_pixel.iloc[idx] == 1:
                     unique_hits.append(hit)
                 else:
                     pass
@@ -67,7 +78,7 @@ def dumpITkTrackCandidates(filename: str, tree_name: str = "GNN4ITk"):
             num_good_strip_sp_per_track.append(len(unique_hits))
 
             itrk += 1
-            output_str += ",".join([str(x) for x in final_hit_id])
+            output_str += ",".join([str(x) for x in unique_hits])
             output_str += "\n"
             if itrk == 1029:
                 print(track)
@@ -77,23 +88,40 @@ def dumpITkTrackCandidates(filename: str, tree_name: str = "GNN4ITk"):
             f.write(output_str)
 
     num_tracks = np.array(num_tracks)
-    num_sp_per_track = np.array(num_sp_per_track)
     num_clusters_per_track = np.array(num_clusters_per_track)
-    num_good_strip_sp_per_track = np.array(num_good_strip_sp_per_track)
+    num_si_clusters_per_track = np.array(num_si_clusters_per_track)
+    num_pixel_clusters_per_track = np.array(num_pixel_clusters_per_track)
     print(f"Mean number of tracks: {num_tracks.mean():.0f}")
     print(f"Mean number of clusters per track: {num_clusters_per_track.mean():.3f}")
-    print(f"Mean number of spacepoints per track: {num_sp_per_track.mean():.3f}")
-    print(f"Mean number of good strip spacepoints per track: {num_good_strip_sp_per_track.mean():.3f}")
-    np.savez(f"track_info_{tree_name}.npz",
-             num_tracks=num_tracks,
-             num_sp_per_track=num_sp_per_track,
-             num_clusters_per_track=num_clusters_per_track,
-             num_good_strip_sp_per_track=num_good_strip_sp_per_track,
+    print(
+        f"Mean number of silicon clusters per track: {num_si_clusters_per_track.mean():.3f}"
     )
+    print(
+        f"Mean number of pixel clusters per track: {num_pixel_clusters_per_track.mean():.3f}"
+    )
+
+    num_sp_per_track = np.array(num_sp_per_track)
+    num_good_strip_sp_per_track = np.array(num_good_strip_sp_per_track)
+    print(f"Mean number of spacepoints per track: {num_sp_per_track.mean():.3f}")
+    print(
+        f"Mean number of good strip spacepoints per track: {num_good_strip_sp_per_track.mean():.3f}"
+    )
+    np.savez(
+        f"track_info_{tree_name}.npz",
+        num_tracks=num_tracks,
+        num_clusters_per_track=num_clusters_per_track,
+        num_si_clusters_per_track=num_si_clusters_per_track,
+        num_pixel_clusters_per_track=num_pixel_clusters_per_track,
+        num_good_strip_sp_per_track=num_good_strip_sp_per_track,
+        num_sp_per_track=num_sp_per_track,
+    )
+
 
 def dumpITkTrackDetails(filename: str, tree_name: str = "GNN4ITk"):
     events = uproot.open(f"{filename}:{tree_name}")
-    tracks_info = events.arrays(["TRKperigee_position", "TRKperigee_momentum", "TRKmot", "TRKcharge"])
+    tracks_info = events.arrays(
+        ["TRKperigee_position", "TRKperigee_momentum", "TRKmot", "TRKcharge"]
+    )
     event_info = events.arrays(["event_number", "run_number"])
     num_events = len(event_info["event_number"])
     print(f"Number of events: {num_events}")
@@ -131,12 +159,14 @@ def dumpITkTrackDetails(filename: str, tree_name: str = "GNN4ITk"):
         print(f"measurements on track: {mot} and pT = {pT:.3f} [MeV]")
         break
 
+
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("filename", help="The ROOT file produced by DumpObject")
     parser.add_argument("--tree-name", default="GNN4ITk", help="The name of the tree")
     args = parser.parse_args()
 
     dumpITkTrackCandidates(args.filename, args.tree_name)
-    dumpITkTrackDetails(args.filename, args.tree_name)
+    # dumpITkTrackDetails(args.filename, args.tree_name)

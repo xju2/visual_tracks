@@ -104,25 +104,28 @@ def build_edges(
             dists, idxs = index_flat.search(emebdding_array, k_max)
         elif (
             backend == "faiss-gpu-quantized" and torch.cuda.is_available()
-        ):  # GPU version
-            res = faiss.StandardGpuResources()
-            index = faiss.GpuIndexIVFFlat(
-                res, embedding.shape[1], nlist, faiss.METRIC_L2
+        ):  # GPU version of quantized, not work
+            raise NotImplementedError(
+                "GPU version of quantized is not implemented yet"
             )
-            print("after gpu index")
-            index.train(emebdding_array)
-            print("after train")
-            # default # of probes is 1
-            # index.nprobe = nprobe
+            # res = faiss.StandardGpuResources()
+            # index = faiss.GpuIndexIVFFlat(
+            #     res, embedding.shape[1], nlist, faiss.METRIC_L2
+            # )
+            # print("after gpu index")
+            # index.train(emebdding_array)
+            # print("after train")
+            # # default # of probes is 1
+            # # index.nprobe = nprobe
 
-            index.add(emebdding_array)
-            print("after add")
-            dists, idxs = index.search(emebdding_array, k_max)
-            print("after search")
+            # index.add(emebdding_array)
+            # print("after add")
+            # dists, idxs = index.search(emebdding_array, k_max)
+            # print("after search")
         else:
             raise ValueError(
                 f"faiss is available, but the mode {backend} is not supported,"
-                "please chose faiss-cpu, faiss-cpu-quantized, or faiss-gpu"
+                "please chose faiss-cpu, faiss-cpu-scalarquantizer, or faiss-gpu"
             )
 
         dists, idxs = torch.from_numpy(dists), torch.from_numpy(idxs)

@@ -64,7 +64,7 @@ class TorchModelInference:
         config_fname: str,
         data_type: str,
         model_path: str,
-        output_path: str,
+        output_path: Optional[str] = None,
         name="TorchModelInference",
     ) -> None:
         self.name = name

@@ -7,9 +7,15 @@ from pathlib import Path
 import torch
 from acctrack.io.base import BaseTrackDataReader
 
+
 class TrackGraphDataReader(BaseTrackDataReader):
-    def __init__(self, inputdir: Union[str, Path], output_dir: str = None,
-                 overwrite: bool = True, name="BaseTrackDataReader"):
+    def __init__(
+        self,
+        inputdir: Union[str, Path],
+        output_dir: str = None,
+        overwrite: bool = True,
+        name="BaseTrackDataReader",
+    ):
         super().__init__(inputdir, output_dir, overwrite, name)
 
         # find all files in inputdir
@@ -28,8 +34,11 @@ class TrackGraphDataReader(BaseTrackDataReader):
             return evtid
 
         self.all_evtids = sorted([find_evt_info(x) for x in self.pyg_files])
-        print("{}: Total {} events in directory: {}".format(
-            self.name, self.nevts, self.inputdir))
+        print(
+            "{}: Total {} events in directory: {}".format(
+                self.name, self.nevts, self.inputdir
+            )
+        )
 
         self.data = None
 
@@ -42,13 +51,16 @@ class TrackGraphDataReader(BaseTrackDataReader):
 
         return data
 
-    def get_node_features(self, node_features: List[str],
-                          node_scales: Optional[List[float]] = None) -> torch.Tensor:
+    def get_node_features(
+        self, node_features: List[str], node_scales: Optional[List[float]] = None
+    ) -> torch.Tensor:
         """Get the node features from the data object"""
         if self.data is None:
             raise RuntimeError("Please read the data first!")
 
-        node_features = torch.stack([self.data[x] for x in node_features], dim=-1).float()
+        node_features = torch.stack(
+            [self.data[x] for x in node_features], dim=-1
+        ).float()
         if node_scales is not None:
             node_scales = torch.Tensor(node_scales)
             node_features = node_features / node_scales
@@ -62,6 +74,11 @@ class TrackGraphDataReader(BaseTrackDataReader):
 
         data = self.data
         # edge-level selections
-        mask = (data.pt >= 900) & (data.nhits >= 3) & (data.primary == 1) \
-            & (data.pdgId != 11) & (data.pdgId != -11)
+        mask = (
+            (data.pt >= 900)
+            & (data.nhits >= 3)
+            & (data.primary == 1)
+            & (data.pdgId != 11)
+            & (data.pdgId != -11)
+        )
         return mask

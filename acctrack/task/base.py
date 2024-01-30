@@ -1,7 +1,7 @@
 from acctrack.hparams_mixin import HyperparametersMixin
 
-class TaskHooks:
 
+class TaskHooks:
     def run(self) -> None:
         """Run the task"""
 

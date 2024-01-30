@@ -3,6 +3,7 @@ from acctrack.utils import get_pylogger
 
 logger = get_pylogger(__name__)
 
+
 class TestTask(TaskBase):
     def __init__(self, **kwargs) -> None:
         super().__init__()

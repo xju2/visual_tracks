@@ -17,8 +17,10 @@ class AthenaRawRootReader(BaseTrackDataReader):
     The code that creates the ROOT file can be found
     https://gitlab.cern.ch/gnn4itkteam/athena/-/tree/21.9.26-root-and-csv-files-from-RDO-v2/Tracking/TrkDumpAlgs
     """
-    def __init__(self, inputdir, output_dir=None,
-                 overwrite=True, name="AthenaRawRootReader"):
+
+    def __init__(
+        self, inputdir, output_dir=None, overwrite=True, name="AthenaRawRootReader"
+    ):
         super().__init__(inputdir, output_dir, overwrite, name)
 
         # find all files in inputdir
@@ -30,7 +32,9 @@ class AthenaRawRootReader(BaseTrackDataReader):
         self.file_evtid = [0]
         for filename in self.root_files:
             try:
-                num_entries = list(uproot.num_entries(str(filename) + ":" + self.tree_name))[0][-1]
+                num_entries = list(
+                    uproot.num_entries(str(filename) + ":" + self.tree_name)
+                )[0][-1]
             except OSError:
                 print(f"Error reading file: {filename}")
                 self.root_files.remove(filename)
@@ -40,11 +44,15 @@ class AthenaRawRootReader(BaseTrackDataReader):
             self.file_evtid.append(start_evtid)
 
         self.num_files = len(self.root_files)
-        print(f"{self.inputdir} contains  {self.num_files} files and total {self.file_evtid[-1]} events.")
+        print(
+            f"{self.inputdir} contains  {self.num_files} files and total {self.file_evtid[-1]} events."
+        )
 
     def read_file(self, file_idx: int = 0, max_evts: int = -1) -> uproot.models.TTree:
         if file_idx >= self.num_files:
-            print(f"File index {file_idx} is out of range. Max index is {self.num_files - 1}")
+            print(
+                f"File index {file_idx} is out of range. Max index is {self.num_files - 1}"
+            )
             return None
         filename = self.root_files[file_idx]
         print(f"Reading file: {filename}")
@@ -56,7 +64,9 @@ class AthenaRawRootReader(BaseTrackDataReader):
         file_map: Dict[int, Tuple[int, int]] = {}
         out_filenames = ["particles", "clusters", "spacepoints", "truth"]
         idx = 0
-        for batch in tree.iterate(step_size=1, filter_name=utils_raw_root.all_branches, library="np"):
+        for batch in tree.iterate(
+            step_size=1, filter_name=utils_raw_root.all_branches, library="np"
+        ):
             idx += 1
             if max_evts > 0 and idx >= max_evts:
                 print(f"Reaching the maximum {max_evts} events. Stop.")
@@ -75,15 +85,18 @@ class AthenaRawRootReader(BaseTrackDataReader):
                 continue
 
             # read particles
-            particle_arrays = [batch[x][0] for x in utils_raw_root.particle_branch_names]
-            particles = pd.DataFrame(dict(zip(utils_raw_root.particle_columns, particle_arrays)))
+            particle_arrays = [
+                batch[x][0] for x in utils_raw_root.particle_branch_names
+            ]
+            particles = pd.DataFrame(
+                dict(zip(utils_raw_root.particle_columns, particle_arrays))
+            )
             particles = particles.rename(columns={"event_number": "subevent"})
             # convert barcode to 7 digits
             particle_ids = utils_raw_csv.get_particle_ids(particles)
             particles.insert(0, "particle_id", particle_ids)
             particles = utils_raw_csv.particles_of_interest(particles)
             self._save("particles", particles, evtid)
-
 
             # read clusters
             cluster_arrays = [batch[x][0] for x in utils_raw_root.cluster_branch_names]
@@ -93,7 +106,7 @@ class AthenaRawRootReader(BaseTrackDataReader):
             cluster_arrays.append(cluster_hardware)
             clusters = pd.DataFrame(dict(zip(cluster_columns, cluster_arrays)))
             clusters = clusters.rename(columns=utils_raw_root.branch_rename_map)
-            clusters['cluster_id'] = clusters['cluster_id'] - 1
+            clusters["cluster_id"] = clusters["cluster_id"] - 1
             clusters = clusters.astype({"hardware": "str", "barrel_endcap": "int32"})
             # read truth links for each cluster
             subevent_name, barcode_name = utils_raw_root.cluster_link_branch_names
@@ -104,39 +117,56 @@ class AthenaRawRootReader(BaseTrackDataReader):
             matched_info = []
             for idx in range(max_matched):
                 matched_info += [
-                    (cluster_id, subevent[idx], barcode[idx]) for cluster_id, subevent, barcode in zip(
-                        clusters["cluster_id"].values, matched_subevents, matched_barcodes)
+                    (cluster_id, subevent[idx], barcode[idx])
+                    for cluster_id, subevent, barcode in zip(
+                        clusters["cluster_id"].values,
+                        matched_subevents,
+                        matched_barcodes,
+                    )
                     if len(subevent) > idx
                 ]
-            cluster_matched = pd.DataFrame(matched_info, columns=["cluster_id", "subevent", "barcode"])
-            cluster_matched["particle_id"] = utils_raw_csv.get_particle_ids(cluster_matched)
+            cluster_matched = pd.DataFrame(
+                matched_info, columns=["cluster_id", "subevent", "barcode"]
+            )
+            cluster_matched["particle_id"] = utils_raw_csv.get_particle_ids(
+                cluster_matched
+            )
             clusters = clusters.merge(cluster_matched, on="cluster_id", how="left")
 
             self._save("clusters", clusters, evtid)
 
-
             # read spacepoints
-            spacepoint_arrays = [batch[x][0] for x in utils_raw_root.spacepoint_branch_names]
-            spacepoints = pd.DataFrame(dict(zip(utils_raw_root.spacepoint_columns, spacepoint_arrays)))
-            spacepoints = spacepoints.rename(columns={
-                "index": "hit_id", "CL1_index": "cluster_index_1", "CL2_index": "cluster_index_2"
-            })
+            spacepoint_arrays = [
+                batch[x][0] for x in utils_raw_root.spacepoint_branch_names
+            ]
+            spacepoints = pd.DataFrame(
+                dict(zip(utils_raw_root.spacepoint_columns, spacepoint_arrays))
+            )
+            spacepoints = spacepoints.rename(
+                columns={
+                    "index": "hit_id",
+                    "CL1_index": "cluster_index_1",
+                    "CL2_index": "cluster_index_2",
+                }
+            )
             self._save("spacepoints", spacepoints, evtid)
 
             pixel_hits = spacepoints[spacepoints["cluster_index_2"] == -1]
             strip_hits = spacepoints[spacepoints["cluster_index_2"] != -1]
 
-
             # matching spacepoints to particles through clusters
             truth = utils_raw_csv.truth_match_clusters(pixel_hits, strip_hits, clusters)
             # regional labels
-            region_labels = dict([(1, {"hardware": "PIXEL", "barrel_endcap": -2}),
-                                  (2, {"hardware": "STRIP", "barrel_endcap": -2}),
-                                  (3, {"hardware": "PIXEL", "barrel_endcap": 0}),
-                                  (4, {"hardware": "STRIP", "barrel_endcap": 0}),
-                                  (5, {"hardware": "PIXEL", "barrel_endcap": 2}),
-                                  (6, {"hardware": "STRIP", "barrel_endcap": 2})
-                                  ])
+            region_labels = dict(
+                [
+                    (1, {"hardware": "PIXEL", "barrel_endcap": -2}),
+                    (2, {"hardware": "STRIP", "barrel_endcap": -2}),
+                    (3, {"hardware": "PIXEL", "barrel_endcap": 0}),
+                    (4, {"hardware": "STRIP", "barrel_endcap": 0}),
+                    (5, {"hardware": "PIXEL", "barrel_endcap": 2}),
+                    (6, {"hardware": "STRIP", "barrel_endcap": 2}),
+                ]
+            )
             truth = utils_raw_csv.merge_spacepoints_clusters(truth, clusters)
             truth = utils_raw_csv.add_region_labels(truth, region_labels)
             self._save("truth", truth, evtid)
@@ -170,8 +200,12 @@ class AthenaRawRootReader(BaseTrackDataReader):
         self.particles = self._read("particles", evtid)
         self.spacepoints = self._read("spacepoints", evtid)
         self.truth = self._read("truth", evtid)
-        if any([x is None for x in [
-                self.clusters, self.particles, self.spacepoints, self.truth]]):
+        if any(
+            [
+                x is None
+                for x in [self.clusters, self.particles, self.spacepoints, self.truth]
+            ]
+        ):
             print("event {evtid} are not processed.")
             print("please run `read_file()` first!")
             return False
@@ -180,7 +214,9 @@ class AthenaRawRootReader(BaseTrackDataReader):
 
     def get_event_info(self, file_idx: int = 0) -> pd.DataFrame:
         if file_idx >= self.num_files:
-            print(f"File index {file_idx} is out of range. Max index is {self.num_files - 1}")
+            print(
+                f"File index {file_idx} is out of range. Max index is {self.num_files - 1}"
+            )
             return None
 
         filename = self.root_files[file_idx]
@@ -203,7 +239,9 @@ class AthenaRawRootReader(BaseTrackDataReader):
             event_info = self.get_event_info(root_file_idx)
             for event_number in event_numbers:
                 if event_number in event_info["event_number"].values:
-                    print(f"Event {event_number} is in file {self.root_files[root_file_idx]}")
+                    print(
+                        f"Event {event_number} is in file {self.root_files[root_file_idx]}"
+                    )
                     event_number_map[event_number] = self.root_files[root_file_idx]
 
                     self.read_file(root_file_idx)

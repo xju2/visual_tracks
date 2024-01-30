@@ -1,5 +1,6 @@
 import logging
 
+
 def get_pylogger(name=__name__) -> logging.Logger:
     """Initializes python command line logger."""
 

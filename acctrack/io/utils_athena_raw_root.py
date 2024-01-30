@@ -3,6 +3,7 @@ from typing import Dict
 
 import numpy as np
 
+
 def create_arrays(branch_arrays: Dict[str, np.ndarray]):
     variables = list(branch_arrays.keys())
     num_evts = len(branch_arrays[variables[0]])
@@ -14,6 +15,7 @@ def create_arrays(branch_arrays: Dict[str, np.ndarray]):
         all_arrays.append(array)
 
     return all_arrays
+
 
 branch_rename_map = {
     "index": "cluster_id",
@@ -29,7 +31,7 @@ branch_rename_map = {
     "Jan_loc_direction1": "lengthDir0",
     "Jan_loc_direction2": "lengthDir1",
     "Jan_loc_direction3": "lengthDir2",
-    "moduleID": "module_id"   # <TODO, not a correct module id>
+    "moduleID": "module_id",  # <TODO, not a correct module id>
 }
 
 # define branch names
@@ -44,45 +46,85 @@ event_branch_names = ["run_number", "event_number"]
 particle_branch_prefix = "Part_"
 # "vParentID", "vParentBarcode" are not used.
 particle_columns = [
-    "event_number", "barcode",
-    "px", "py", "pz", "pt", "eta",
-    "vx", "vy", "vz",
-    "radius", "status", "charge", "pdg_id",
-    "passed", "vProdNin", "vProdNout", "vProdStatus",
-    "vProdBarcode"
+    "event_number",
+    "barcode",
+    "px",
+    "py",
+    "pz",
+    "pt",
+    "eta",
+    "vx",
+    "vy",
+    "vz",
+    "radius",
+    "status",
+    "charge",
+    "pdg_id",
+    "passed",
+    "vProdNin",
+    "vProdNout",
+    "vProdStatus",
+    "vProdBarcode",
 ]
 particle_branch_names = [particle_branch_prefix + col for col in particle_columns]
 
 # cluster branch names
 cluster_branch_prefix = "CL"
 cluster_columns = [
-    "index", "moduleID",
-    "x", "y", "z",
-    "barrel_endcap", "layer_disk", "eta_module", "phi_module", "side",
-    "pixel_count", "charge_count",
-    "loc_eta", "loc_phi",
-    "loc_direction1", "loc_direction2", "loc_direction3",
-    "Jan_loc_direction1", "Jan_loc_direction2", "Jan_loc_direction3",
-    "glob_eta", "glob_phi",
-    "eta_angle", "phi_angle", "norm_x", "norm_y", "norm_z",
+    "index",
+    "moduleID",
+    "x",
+    "y",
+    "z",
+    "barrel_endcap",
+    "layer_disk",
+    "eta_module",
+    "phi_module",
+    "side",
+    "pixel_count",
+    "charge_count",
+    "loc_eta",
+    "loc_phi",
+    "loc_direction1",
+    "loc_direction2",
+    "loc_direction3",
+    "Jan_loc_direction1",
+    "Jan_loc_direction2",
+    "Jan_loc_direction3",
+    "glob_eta",
+    "glob_phi",
+    "eta_angle",
+    "phi_angle",
+    "norm_x",
+    "norm_y",
+    "norm_z",
 ]
 cluster_branch_names = [cluster_branch_prefix + col for col in cluster_columns]
 
 # cluster link to particles
 # one cluster may link to multiple particles
-coluster_link_columns = [
-    "particleLink_eventIndex", "particleLink_barcode"
+coluster_link_columns = ["particleLink_eventIndex", "particleLink_barcode"]
+cluster_link_branch_names = [
+    cluster_branch_prefix + col for col in coluster_link_columns
 ]
-cluster_link_branch_names = [cluster_branch_prefix + col for col in coluster_link_columns]
 
 # spacepoint branch names
 spacepoint_branch_prefix = "SP"
 spacepoint_columns = [
-    "index", "x", "y", "z",
-    "CL1_index", "CL2_index",
+    "index",
+    "x",
+    "y",
+    "z",
+    "CL1_index",
+    "CL2_index",
 ]
 spacepoint_branch_names = [spacepoint_branch_prefix + col for col in spacepoint_columns]
 
-all_branches = event_branch_names + particle_branch_names \
-    + cluster_branch_names + ["CLhardware"] \
-    + cluster_link_branch_names + spacepoint_branch_names
+all_branches = (
+    event_branch_names
+    + particle_branch_names
+    + cluster_branch_names
+    + ["CLhardware"]
+    + cluster_link_branch_names
+    + spacepoint_branch_names
+)

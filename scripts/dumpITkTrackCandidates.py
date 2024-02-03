@@ -8,29 +8,6 @@ import numpy as np
 import pandas as pd
 
 
-def plot_profile(x, y, xbins, range, xlabel, ylabel, title, output):
-    import matplotlib.pyplot as plt
-    from scipy.stats import binned_statistic
-
-    bin_means, bin_edges, binnumber = binned_statistic(
-        x, y, statistic="mean", bins=xbins, range=range
-    )
-    bin_width = bin_edges[1] - bin_edges[0]
-    bin_centers = bin_edges[1:] - bin_width / 2
-    plt.errorbar(
-        bin_centers,
-        bin_means,
-        yerr=bin_means / np.sqrt(binnumber),
-        fmt="o",
-        color="black",
-    )
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.title(title)
-    plt.savefig(output)
-    plt.close()
-
-
 def dumpITkTrackCandidates(
     filename: str, tree_name: str = "GNN4ITk", num_evts: int = 1
 ):
@@ -103,7 +80,6 @@ def dumpITkTrackCandidates(
                 )
             )
 
-            silicon_hits = [x for x in track[1].hit_id if x != -1]
             # remove duplicated hits while keeping the order
             final_hit_id = []
             strip_sps = []
@@ -123,17 +99,19 @@ def dumpITkTrackCandidates(
             # defined as those have only one cluster in the track candidate
             unique_hits = []
             unique_good_strip_hits = []
-            for idx, hit in enumerate(silicon_hits[:-1]):
+            for idx, hit in enumerate(track[1].hit_id[:-1]):
                 if hit == -1:
                     continue
                 if track[1].is_pixel.iloc[idx] == 0:
-                    if hit == silicon_hits[idx + 1]:
+                    if hit == track[1].hit_id.iloc[idx + 1]:
                         unique_hits.append(hit)
                         unique_good_strip_hits.append(hit)
                 elif track[1].is_pixel.iloc[idx] == 1:
                     unique_hits.append(hit)
                 else:
                     pass
+            if track[1].hit_id.iloc[-1] != -1 and track[1].is_pixel.iloc[-1] == 1:
+                unique_hits.append(track[1].hit_id.iloc[-1])
 
             num_non_ghost_strip_sp_per_track.append(len(unique_good_strip_hits))
             x_spacepoints_in_track, y_spacepoints_in_track = (

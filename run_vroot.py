@@ -12,12 +12,10 @@ from pathlib import Path  # noqa: E402
 
 import hydra  # noqa: E402
 from omegaconf import DictConfig  # noqa: E402
+from acctrack import utils  # noqa: E402
 from acctrack.utils import resolvers  # noqa: E402
 
 resolvers.add_my_resolvers()
-
-# from vroot.task.base import TaskBase
-from acctrack import utils  # noqa: E402
 
 
 @utils.task_wrapper

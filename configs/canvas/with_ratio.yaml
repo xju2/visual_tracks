@@ -1,4 +1,4 @@
-_target_: vroot.tools.canvas.Canvas
+_target_: acctrack.tools.canvas.Canvas
 size:
   width: 800
   height: 600

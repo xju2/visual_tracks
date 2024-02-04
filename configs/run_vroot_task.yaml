@@ -1,10 +1,21 @@
 defaults:
+  - hydra: default.yaml
+  - extras: default.yaml
   - _self_
   - task: null # this is the default task
   - paths: default.yaml
-  - extras: default.yaml
-  - hydra: default.yaml
   - canvas: default.yaml
   - histograms: idpvm_efficiencies.yaml
 
 task_name: "testing_runs"
+
+hydra:
+  sweep:
+    dir: ${paths.log_dir}/${task_name}/${now:%Y-%m-%d}/multiruns/${now:%H-%M-%S}
+    subdir: ${hydra.job.num}
+
+  run:
+    dir: ${paths.log_dir}/${task_name}/${now:%Y-%m-%d}/output/${now:%H-%M-%S}
+
+extras:
+  print_config: False

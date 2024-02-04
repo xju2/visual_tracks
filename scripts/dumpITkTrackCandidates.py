@@ -9,7 +9,7 @@ import pandas as pd
 
 
 def dumpITkTrackCandidates(
-    filename: str, tree_name: str = "GNN4ITk", num_evts: int = 1
+    filename: str, tree_name: str = "GNN4ITk", num_evts: int = 1, no_csv: bool = False
 ):
     events = uproot.open(f"{filename}:{tree_name}")
     tracks_info = events.arrays(
@@ -56,7 +56,6 @@ def dumpITkTrackCandidates(
         output_str = ""
         itrk = 0
         for track in tracks:
-
             # calculate the track parameters
             itrk = track[0]
             px, py, pz = perigee_momentum[itrk]
@@ -135,8 +134,11 @@ def dumpITkTrackCandidates(
 
         num_tracks.append(itrk)
 
-        with open(f"track_{run_number}_{event_number}.csv", "w", encoding="utf-8") as f:
-            f.write(output_str)
+        if not no_csv:
+            with open(
+                f"track_{run_number}_{event_number}.csv", "w", encoding="utf-8"
+            ) as f:
+                f.write(output_str)
 
     num_tracks = np.array(num_tracks)
     num_clusters_per_track = np.array(num_clusters_per_track)
@@ -229,7 +231,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--num-evts", type=int, default=1, help="Number of events to process"
     )
+    parser.add_argument(
+        "--no-csv", action="store_true", help="Do not save the track information to csv"
+    )
     args = parser.parse_args()
 
-    dumpITkTrackCandidates(args.filename, args.tree_name, args.num_evts)
+    dumpITkTrackCandidates(args.filename, args.tree_name, args.num_evts, args.no_csv)
     # dumpITkTrackDetails(args.filename, args.tree_name)

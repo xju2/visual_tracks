@@ -1,0 +1,13 @@
+defaults:
+  -  default
+  - _self_
+
+histo_dir: SquirrelPlots/${histograms.track_dir_name}/Tracks/Efficiency
+ylabel: "Track Efficiency"
+ylim: [0., 1.01]
+ratio_ylim: [0.95, 1.09]
+rebin: 1
+track_names: "eta, pt, d0, z0, R"
+histograms:
+  - histname: ${gen_str:"efficiency_vs_{}", ${histograms.track_names}}
+    xlim: [[-4, 4], [0, 20], [-5, 5], [-150, 150], [0, 30]]

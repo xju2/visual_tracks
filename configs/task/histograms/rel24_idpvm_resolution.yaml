@@ -1,0 +1,31 @@
+defaults:
+  -  default
+  - _self_
+
+histo_dir: SquirrelPlots/${histograms.track_dir_name}/Tracks/Matched/Resolutions/Primary
+ratio_ylim: [0.75, 1.45]
+
+canvas:
+  atlas_label:
+    y: 0.8
+  other_label:
+    y: 0.725
+  legend:
+    y: 0.55
+
+track_names: "d0, z0, z0sin, qoverp"
+num_track_names: 4
+
+histograms:
+  - histname: ${gen_str:"resolution_vs_eta_{}", ${histograms.track_names}}
+    ylim: [[2, 300], [10, 100_000], [0, 1000], [0.008, 5]]
+    is_logy: [false, true, false, true]
+
+  - histname: ${gen_str:"resolution_vs_pt_{}", ${histograms.track_names}}
+    ylim: [[0, 400], [10, 2500], [0, 500], [0.008, 0.05]]
+
+  - histname: ${gen_str:"pull_{}", ${histograms.track_names}}
+    ylim: [[0, 200], [0, 400], [0, 150], [0, 400]]
+    ratio_ylim: ${gen_list:[0.5, 4], ${histograms.num_track_names}}
+
+  - histname: ${gen_str:"sigma_{}", ${histograms.track_names}}

@@ -1,0 +1,53 @@
+defaults:
+  - default
+  - _self_
+
+histo_dir: SquirrelPlots/${histograms.track_dir_name}/Tracks/Selected/HitsOnTracks
+ratio_ylim: [0.8, 1.13]
+canvas:
+  atlas_label:
+    y: 0.8
+  other_label:
+    y: 0.725
+  legend:
+    y: 0.55
+
+hit_props: "Hits, Holes, Outliers, SharedHits"
+hit_names: "hits, holes, outliers, shared hits"
+
+track_names: "d0, z0, qoverp, z0sin, pt"
+num_track_names: 5
+track_latex_names: "d_{0}, z_{0}, q/p, z_{0}sin#theta, p_{T}"
+
+histograms:
+
+  - histname: nPixelHits_vs_eta
+    ylabel: "N_{hits, Pixel}"
+    ylim: [-0.65, 30]
+    ratio_ylim: [0.94, 1.065]
+
+  - histname: nSCTHits_vs_eta
+    ylabel: "N_{hits, Strip}"
+    ylim: [-0.65, 25]
+
+  - histname: nPixelHoles_vs_eta
+    ylabel: "N_{holes, Pixel}"
+    ylim: [-0.65, 3]
+
+  - histname: nSCTHoles_vs_eta
+    ylabel: "N_{holes, Strip}"
+    ylim: [-0.001, 2]
+
+  - histname: nSCTDoubleHoles_vs_eta
+    ylabel: "N_{double holes, Strip}"
+    ylim: [-0.001, 0.1]
+
+  - histname: ${gen_str:"nPixel{}",${histograms.hit_props}}
+    xlabel: ${gen_str:"N_{{{}, Pixel}}", ${histograms.hit_names}}
+    xlim: [[0, 30], [0, 5], [0, 5], [0, 5]]
+    # ylim: [[0, 15000], [0, 200_000], [0, 200_000], [0, 200_000]]
+
+  - histname: ${gen_str:"nSCT{}",${histograms.hit_props}}
+    xlabel: ${gen_str:"N_{{{}, Strip}}", ${histograms.hit_names}}
+    xlim: [[0, 20], [0, 5], [0, 5], [0, 5]]
+    # ylim: [[0.2, 15000], [0, 200_000], [0, 200_000], [0, 200_000]]

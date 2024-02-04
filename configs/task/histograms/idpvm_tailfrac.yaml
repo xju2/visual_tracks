@@ -1,0 +1,22 @@
+defaults:
+  - default
+  - _self_
+
+histo_dir: IDPerformanceMon/Tracks/SelectedMatchedTracks/Primary
+ylabel: "Tail Fraction"
+ylim: [0.00001, 0.3]
+ratio_ylim: [0.95, 1.09]
+rebin: 1
+canvas:
+  atlas_label:
+    y: 0.8
+  other_label:
+    y: 0.725
+  legend:
+    y: 0.55
+
+histograms:
+  - histname: ${gen_str:"tailfrac_vs_eta_{}", ${histograms.track_names}}
+    xlim: ${gen_list:[-4, 4], ${histograms.num_track_names}}
+    xlabel: ${gen_list:"#eta^{true}", ${histograms.num_track_names}}
+    ylabel: ${gen_str:"Tail Fraction in {}", ${histograms.track_latex_names}}

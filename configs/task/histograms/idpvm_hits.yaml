@@ -1,0 +1,50 @@
+defaults:
+  - default
+  - _self_
+
+histo_dir: IDPerformanceMon/Tracks/SelectedMatchedTracks
+ratio_ylim: [0.8, 1.13]
+canvas:
+  atlas_label:
+    y: 0.8
+  other_label:
+    y: 0.725
+  legend:
+    y: 0.55
+
+hit_props: "Hits, Holes, Outliers, SharedHits"
+hit_names: "hits, holes, outliers, shared hits"
+histograms:
+  - histname: HitContent_vs_eta_NPixelHits
+    ylabel: "N_{hits, Pixel}"
+    ylim: [-0.65, 25]
+    ratio_ylim: [0.94, 1.065]
+
+  - histname: HitContent_vs_eta_NSCTHits
+    ylabel: "N_{hits, Strip}"
+    ylim: [-0.65, 25]
+
+  - histname: HitContent_vs_eta_NPixelHoles
+    ylabel: "N_{holes, Pixel}"
+    ylim: [-0.65, 5]
+
+  - histname: HitContent_vs_eta_NSCTHoles
+    ylabel: "N_{holes, Strip}"
+    ylim: [-0.001, 2]
+
+  - histname: HitContent_vs_eta_NSCTDoubleHoles
+    ylabel: "N_{double holes, Strip}"
+    ylim: [-0.001, 0.25]
+
+  - histname: HitContent_NSCTHits
+    xlabel: "N_{hits, Strip}"
+    xlim: [0, 20]
+
+  - histname: ${gen_str:"HitContent_NPixel{}",${histograms.hit_props}}
+    xlabel: ${gen_str:"N_{{{}, Pixel}}", ${histograms.hit_names}}
+    xlim: [[0, 30], [0, 5], [0, 5], [0, 5]]
+
+  - histname: ${gen_str:"HitContent_NSCT{}",${histograms.hit_props}}
+    xlabel: ${gen_str:"N_{{{}, Strip}}", ${histograms.hit_names}}
+    xlim: [[0, 20], [0, 5], [0, 5], [0, 5]]
+    ylim: [[0.2, 1500], null, null, null]

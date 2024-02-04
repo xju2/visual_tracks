@@ -64,17 +64,19 @@ class TH1FileHandle(HyperparametersMixin):
         th1_type = type(th1)
         hist_copy = None
 
-        if th1_type is ROOT.TEfficiency:
+        if isinstance(th1, ROOT.TEfficiency):
             hist = convert_TEfficiency_to_TGraphAsymmErrors(th1)
             hist_copy = th1.GetCopyPassedHisto()
             hist_copy.Divide(
                 th1.GetCopyPassedHisto(), th1.GetCopyTotalHisto(), 1.0, 1.0, "B"
             )
             hist_copy.SetLineWidth(2)
-        elif th1_type is ROOT.TProfile:
+        elif isinstance(th1, ROOT.TProfile):
             hist = th1.ProjectionX()
         else:
             hist = th1
+            if isinstance(hist, ROOT.TH1) and hist_options.density:
+                hist.Scale(1.0 / hist.Integral())
 
         if hist_options.xlabel is not None:
             hist.GetXaxis().SetTitle(hist_options.xlabel)

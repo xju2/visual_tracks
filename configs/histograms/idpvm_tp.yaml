@@ -16,21 +16,21 @@ canvas:
   legend:
     y: 0.55
 
-track_names: "d0, z0, qoverp, z0sin, pt"
+track_para_names: "d0, z0, qoverp, z0sin, pt"
 num_track_names: 5
-track_latex_names: "d_{0}, z_{0}, q/p, z_{0}sin#theta, p_{T}"
+track_para_latex_names: "d_{0}, z_{0}, q/p, z_{0}sin#theta, p_{T}"
 histograms:
-  - histname: ${gen_str:"pull_{}", ${histograms.track_names}}
+  - histname: ${gen_str:"pull_{}", ${histograms.track_para_names}}
     ylim: [[0, 60], [0, 50], [0, 100], [0, 40], [0, 100]]
     xlim: [[-5, 5], [-10, 10], [-0.001, 0.001], [-3, 3], [-10, 10]]
     ratio_ylim: ${gen_list:[0.75, 2], ${histograms.num_track_names}}
 
 
-  - histname: ${gen_str:"pull_{}", ${histograms.track_names}}
+  - histname: ${gen_str:"pull_{}", ${histograms.track_para_names}}
     ylim: [[0, 200], [0, 400], [0, 150], [0, 400], [0, 400]]
     ratio_ylim: ${gen_list:[0.5, 4], ${histograms.num_track_names}}
 
-  - histname: ${gen_str:"reco_{}", ${histograms.track_names}}
+  - histname: ${gen_str:"reco_{}", ${histograms.track_para_names}}
     ratio_ylim: ${gen_list:[0.75, 2], ${histograms.num_track_names}}
 
-  - histname: ${gen_str:"sigma_{}", ${histograms.track_names}}
+  - histname: ${gen_str:"sigma_{}", ${histograms.track_para_names}}

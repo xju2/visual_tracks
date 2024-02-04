@@ -15,9 +15,9 @@ canvas:
 hit_props: "Hits, Holes, Outliers, SharedHits"
 hit_names: "hits, holes, outliers, shared hits"
 
-track_names: "d0, z0, qoverp, z0sin, pt"
+track_para_names: "d0, z0, qoverp, z0sin, pt"
 num_track_names: 5
-track_latex_names: "d_{0}, z_{0}, q/p, z_{0}sin#theta, p_{T}"
+track_para_latex_names: "d_{0}, z_{0}, q/p, z_{0}sin#theta, p_{T}"
 
 histograms:
 

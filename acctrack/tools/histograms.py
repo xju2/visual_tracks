@@ -20,6 +20,7 @@ class HistogramOptions(HyperparametersMixin):
                  rebin: Optional[int] = None,
                  ratio_ylim: Optional[Tuple[float, float]] = None,
                  ratio_ylabel: Optional[str] = None,
+                 density: bool = False,
                  **kwargs) -> None:
         super().__init__()
         self.save_hyperparameters()

@@ -15,10 +15,10 @@ canvas:
   legend:
     y: 0.55
 
-track_names: "d0, z0, qoverp, z0sin, pt"
+track_para_names: "d0, z0, qoverp, z0sin, pt"
 num_track_names: 5
-track_latex_names: "d_{0}, z_{0}, q/p, z_{0}sin#theta, p_{T}"
+track_para_latex_names: "d_{0}, z_{0}, q/p, z_{0}sin#theta, p_{T}"
 
 histograms:
-  - histname: ${gen_str:"reco_{}", ${histograms.track_names}}
+  - histname: ${gen_str:"reco_{}", ${histograms.track_para_names}}
     ratio_ylim: ${gen_list:[0.75, 2], ${histograms.num_track_names}}

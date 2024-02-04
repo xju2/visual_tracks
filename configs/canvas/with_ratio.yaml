@@ -1,0 +1,25 @@
+_target_: vroot.tools.canvas.Canvas
+size:
+  width: 800
+  height: 600
+
+atlas_label:
+  x: 0.35
+  y: 0.35
+  text: "Internal"
+  text_size: 0.05
+  color: 1
+
+other_label:
+  x: 0.35
+  y: 0.275
+  text: "#sqrt{s} = 14 TeV, t#bar{t}, <#mu> = 200, HS, p_{T} > 2 GeV"
+  text_size: 0.05
+  color: 1
+
+legend:
+  x: 0.325
+  y: 0.05
+  width: 0.3
+  height: 0.15
+  text_size: 0.04

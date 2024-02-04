@@ -1,0 +1,10 @@
+defaults:
+  - _self_
+  - task: null # this is the default task
+  - paths: default.yaml
+  - extras: default.yaml
+  - hydra: default.yaml
+  - canvas: default.yaml
+  - histograms: idpvm_efficiencies.yaml
+
+task_name: "testing_runs"

@@ -1,12 +1,12 @@
 _target_: acctrack.task.compare_two_files.CompareTwoIdentidicalFiles
 with_ratio: false
 reference_file:
-  _target_: vroot.tools.reader.TH1FileHandle
+  _target_: acctrack.tools.reader.TH1FileHandle
   path: ${paths.data_dir}/MyPhysVal_CKF.root
   name: CKF Tracking
   is_data: false
 comparator_file:
-  _target_: vroot.tools.reader.TH1FileHandle
+  _target_: acctrack.tools.reader.TH1FileHandle
   path: ${paths.data_dir}/MyPhysVal_GNN.root
   name: GNN Tracking
   is_data: false

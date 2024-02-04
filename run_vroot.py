@@ -6,19 +6,18 @@ root = pyrootutils.setup_root(
     pythonpath=True,
     dotenv=True,
 )
-from typing import List
-import logging
-from pathlib import Path
 
-import hydra
-from omegaconf import DictConfig
+import logging  # noqa: E402
+from pathlib import Path  # noqa: E402
 
-from acctrack.task.base import TaskBase
-from acctrack.utils import resolvers
+import hydra  # noqa: E402
+from omegaconf import DictConfig  # noqa: E402
+from acctrack.utils import resolvers  # noqa: E402
 
 resolvers.add_my_resolvers()
 
-from acctrack import utils
+# from vroot.task.base import TaskBase
+from acctrack import utils  # noqa: E402
 
 
 @utils.task_wrapper
@@ -33,9 +32,15 @@ def main_function(cfg: DictConfig) -> None:
     if not cfg.get("task"):
         raise ValueError("Task is not specified in the config file.")
 
-    tasks: List[TaskBase] = utils.instantiate_tasks(cfg.task)
-    for task in tasks:
-        task.run()
+    # Instantiate the task
+    task = hydra.utils.instantiate(cfg.task)
+    canvas = hydra.utils.instantiate(cfg.canvas)
+    task.set_canvas(canvas)
+
+    # histograms
+    task.add_histograms(cfg.histograms)
+
+    task.run()
 
 
 @hydra.main(

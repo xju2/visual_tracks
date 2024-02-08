@@ -1,3 +1,4 @@
 {
     "files.trimTrailingWhitespace": true,
+    "sarif-viewer.connectToGithubCodeScanning": "off",
 }

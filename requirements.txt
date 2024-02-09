@@ -15,3 +15,10 @@ seaborn
 # array processing
 numpy
 pandas
+
+jupyterlab
+uproot
+pyarrow
+
+# airflow
+graphviz

@@ -9,7 +9,11 @@ import pandas as pd
 
 
 def dumpITkTrackCandidates(
-    filename: str, tree_name: str = "GNN4ITk", num_evts: int = 1, no_csv: bool = False
+    filename: str,
+    tree_name: str = "GNN4ITk",
+    num_evts: int = 1,
+    no_csv: bool = False,
+    use_clusters: bool = False,
 ):
     events = uproot.open(f"{filename}:{tree_name}")
     tracks_info = events.arrays(
@@ -19,6 +23,7 @@ def dumpITkTrackCandidates(
             "TRKspacepointsIsPixel",
             "TRKperigee_position",
             "TRKperigee_momentum",
+            "TRKmeasurementsOnTrack_pixcl_sctcl_index"
         ]
     )
 
@@ -47,6 +52,7 @@ def dumpITkTrackCandidates(
         track_id = track_info["TRKspacepointsIdxOnTrack_trkIndex"].to_numpy()
         is_pixel = track_info["TRKspacepointsIsPixel"].to_numpy()
         perigee_momentum = track_info["TRKperigee_momentum"].to_numpy()
+        clusters_on_tracks = track_info["TRKmeasurementsOnTrack_pixcl_sctcl_index"]
 
         track_info = pd.DataFrame(
             {"hit_id": hit_id, "track_id": track_id, "is_pixel": is_pixel}
@@ -128,9 +134,16 @@ def dumpITkTrackCandidates(
 
             num_non_ghost_sp_per_track.append(len(unique_hits))
 
-            itrk += 1
-            output_str += ",".join([str(x) for x in unique_hits])
+            if use_clusters:
+                output_str += ",".join([str(x) for x in unique_hits[:3]])
+                output_str += ","
+                cluster_idx = clusters_on_tracks[itrk].to_numpy()
+                output_str += ",".join([str(x) for x in cluster_idx])
+            else:
+                output_str += ",".join([str(x) for x in unique_hits])
             output_str += "\n"
+            # prepare for the next track
+            itrk += 1
 
         num_tracks.append(itrk)
 
@@ -182,7 +195,7 @@ def dumpITkTrackCandidates(
 def dumpITkTrackDetails(filename: str, tree_name: str = "GNN4ITk"):
     events = uproot.open(f"{filename}:{tree_name}")
     tracks_info = events.arrays(
-        ["TRKperigee_position", "TRKperigee_momentum", "TRKmot", "TRKcharge"]
+        ["TRKperigee_position", "TRKperigee_momentum", "TRKmot", "TRKoot", "TRKcharge", "TRKmeasurementsOnTrack_pixcl_sctcl_index"]
     )
     event_info = events.arrays(["event_number", "run_number"])
     num_events = len(event_info["event_number"])
@@ -196,12 +209,16 @@ def dumpITkTrackDetails(filename: str, tree_name: str = "GNN4ITk"):
         track_info = tracks_info[ievt]
         perigee_position = track_info["TRKperigee_position"].to_numpy()
         perigee_momentum = track_info["TRKperigee_momentum"].to_numpy()
+        measurements_on_track = track_info["TRKmeasurementsOnTrack_pixcl_sctcl_index"]
         mots = track_info["TRKmot"].to_numpy()
+        oots = track_info["TRKoot"].to_numpy()
         charges = track_info["TRKcharge"].to_numpy()
         print(perigee_position.shape, perigee_momentum.shape)
+
         itrk = 1028
         print(f"Track info for {itrk}th track:")
         mot = mots[itrk]
+        oot = oots[itrk]
         charge = charges[itrk]
         x, y, z = perigee_position[itrk]
         px, py, pz = perigee_momentum[itrk]
@@ -219,6 +236,8 @@ def dumpITkTrackDetails(filename: str, tree_name: str = "GNN4ITk"):
         print(f"theta: {theta:.3f}")
         print(f"qoverp: {charge / momentum:.6f} [1/MeV]")
         print(f"measurements on track: {mot} and pT = {pT:.3f} [MeV]")
+        print(f"outliers on track: {oot}")
+        print(f"measurements on track: {measurements_on_track[itrk].to_numpy().shape}")
         break
 
 
@@ -234,7 +253,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--no-csv", action="store_true", help="Do not save the track information to csv"
     )
+    parser.add_argument(
+        "--use-clusters", action="store_true", help="Use clusters to define tracks"
+
+    )
     args = parser.parse_args()
 
-    dumpITkTrackCandidates(args.filename, args.tree_name, args.num_evts, args.no_csv)
+    dumpITkTrackCandidates(args.filename, args.tree_name, args.num_evts, args.no_csv, args.use_clusters)
     # dumpITkTrackDetails(args.filename, args.tree_name)

@@ -14,6 +14,7 @@ def dumpITkTrackCandidates(
     num_evts: int = 1,
     no_csv: bool = False,
     use_clusters: bool = False,
+    use_strip: bool = True,
 ):
     events = uproot.open(f"{filename}:{tree_name}")
     tracks_info = events.arrays(
@@ -23,7 +24,7 @@ def dumpITkTrackCandidates(
             "TRKspacepointsIsPixel",
             "TRKperigee_position",
             "TRKperigee_momentum",
-            "TRKmeasurementsOnTrack_pixcl_sctcl_index"
+            "TRKmeasurementsOnTrack_pixcl_sctcl_index",
         ]
     )
 
@@ -88,6 +89,7 @@ def dumpITkTrackCandidates(
             # remove duplicated hits while keeping the order
             final_hit_id = []
             strip_sps = []
+            pixel_sps = []
             for idx, hit in enumerate(track[1].hit_id):
                 if hit == -1:
                     continue
@@ -96,6 +98,10 @@ def dumpITkTrackCandidates(
                     final_hit_id.append(hit)
                     if track[1].is_pixel.iloc[idx] == 0:  # strip spacepoint
                         strip_sps.append(hit)
+                    elif track[1].is_pixel.iloc[idx] == 1:
+                        pixel_sps.append(hit)
+                    else:
+                        pass
 
             num_sp_per_track.append(len(final_hit_id))
             num_strip_sp_per_track.append(len(strip_sps))
@@ -139,8 +145,12 @@ def dumpITkTrackCandidates(
                 output_str += ","
                 cluster_idx = clusters_on_tracks[itrk].to_numpy()
                 output_str += ",".join([str(x) for x in cluster_idx])
-            else:
-                output_str += ",".join([str(x) for x in unique_hits])
+            else:  # use spacepoints
+                if use_strip:
+                    output_str += ",".join([str(x) for x in unique_hits])
+                else:
+                    output_str += ",".join([str(x) for x in pixel_sps])
+
             output_str += "\n"
             # prepare for the next track
             itrk += 1
@@ -195,7 +205,14 @@ def dumpITkTrackCandidates(
 def dumpITkTrackDetails(filename: str, tree_name: str = "GNN4ITk"):
     events = uproot.open(f"{filename}:{tree_name}")
     tracks_info = events.arrays(
-        ["TRKperigee_position", "TRKperigee_momentum", "TRKmot", "TRKoot", "TRKcharge", "TRKmeasurementsOnTrack_pixcl_sctcl_index"]
+        [
+            "TRKperigee_position",
+            "TRKperigee_momentum",
+            "TRKmot",
+            "TRKoot",
+            "TRKcharge",
+            "TRKmeasurementsOnTrack_pixcl_sctcl_index",
+        ]
     )
     event_info = events.arrays(["event_number", "run_number"])
     num_events = len(event_info["event_number"])
@@ -255,9 +272,14 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--use-clusters", action="store_true", help="Use clusters to define tracks"
-
+    )
+    parser.add_argument(
+        "--no-strip", action="store_true", help="Use strip spacepoints to define tracks"
     )
     args = parser.parse_args()
 
-    dumpITkTrackCandidates(args.filename, args.tree_name, args.num_evts, args.no_csv, args.use_clusters)
+    use_strip = not args.no_strip
+    dumpITkTrackCandidates(
+        args.filename, args.tree_name, args.num_evts, args.no_csv, args.use_clusters, use_strip
+    )
     # dumpITkTrackDetails(args.filename, args.tree_name)

@@ -18,7 +18,7 @@ function gnn_tracking() {
         --preInclude 'all:Campaigns.PhaseIIPileUp200' 'InDetConfig.ConfigurationHelpers.OnlyTrackingPreInclude' 'InDetGNNTracking.InDetGNNTrackingConfig.gnnReaderValidation' \
         --inputRDOFile ${RDO_FILENAME} \
         --outputAODFile 'test.aod.gnnreader.debug.root'  \
-        --maxEvents -1  2>&1 | tee log.gnnreader_debug.txt
+        --maxEvents 1  2>&1 | tee log.gnnreader_debug.txt
 }
 
 gnn_tracking

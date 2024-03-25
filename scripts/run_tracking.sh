@@ -1,6 +1,6 @@
 #!/bin/bash
 
-RDO_FILENAME="data/reduced_RDO.r14701.33629030._000008.pool.root.1"
+RDO_FILENAME="../run_main_clean/reduced_RDO.r14701.33629030._000008.pool.root.1"
 
 function gnn_tracking() {
     rm InDetIdDict.xml PoolFileCatalog.xml
@@ -15,7 +15,7 @@ function gnn_tracking() {
         --steering 'doRAWtoALL' \
         --digiSteeringConf 'StandardInTimeOnlyTruth' \
         --postInclude 'all:PyJobTransforms.UseFrontier' \
-        --preInclude 'all:Campaigns.PhaseIIPileUp200' 'InDetConfig.ConfigurationHelpers.OnlyTrackingPreInclude' 'InDetGNNTracking.InDetGNNTrackingConfig.gnnReaderValidation' \
+        --preInclude 'all:Campaigns.PhaseIIPileUp200' 'InDetConfig.ConfigurationHelpers.OnlyTrackingPreInclude' 'InDetGNNTracking.InDetGNNTrackingFlags.gnnReaderValidation' \
         --inputRDOFile ${RDO_FILENAME} \
         --outputAODFile 'test.aod.gnnreader.debug.root'  \
         --maxEvents 1  2>&1 | tee log.gnnreader_debug.txt

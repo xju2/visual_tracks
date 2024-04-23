@@ -1,7 +1,7 @@
 # --------- hydra --------- #
-hydra-core==1.2.0
-hydra-colorlog==1.2.0
-hydra-optuna-sweeper==1.2.0
+hydra-core>=1.2.0
+hydra-colorlog>=1.2.0
+hydra-optuna-sweeper>=1.2.0
 # --------- others --------- #
 pyrootutils     # standardizing the project root setup
 pre-commit      # hooks for applying linters on commit
@@ -15,6 +15,11 @@ seaborn
 # array processing
 numpy
 pandas
+
+# for distribute the package
+twine
+build
+pytest-cov
 
 jupyterlab
 uproot

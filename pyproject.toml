@@ -1,25 +1,51 @@
+[project]
+name = "acctrack"
+version = "0.1.0"
+description = "Facility for accessing and visualizing tracking data"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+keywords = [
+  "tracking",
+  "visualization",
+  "data",
+]
+authors = [
+  {name = "X. Ju", email = "xju@lbl.gov"}
+]
+
+dependencies = [ ]
+
+[project.urls]
+Homepage = "https://github.com/xju2/visual_tracks"
+Issues = "https://github.com/xju2/visual_tracks/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+preview = true
+lint.select = ["ALL"]
+lint.ignore = [
+    "COM", "D100", "D101", "D102", "D103", "D104", "D105", "D205", "D401", "EM", "FIX", "FBT",
+    "S101", "S404", "S602", "PLR2004", "PLR0912", "PLR0913", "PLR0914", "PLR0915", "PLR0917",
+    "PLC0415", "G004", "PD901", "N802", "C901", "DTZ005", "DTZ007", "INP", "EXE002", "TD002",
+    "ANN001", "ANN002", "ANN003", "ANN101", "ANN201", "ANN202", "ANN204", "CPY001", "TRY003",
+    "N803", "N806", "N812", "T201", "PLW1514", "PTH123", "RUF015", "RUF017", "PLR6301", "ERA", "ISC001",
+    "RET504", "SLF001", "S403", "PLR1702"
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
 [tool.pytest.ini_options]
 addopts = [
-  "--color=yes",
-  "--durations=0",
-  "--strict-markers",
-  "--doctest-modules",
-]
-filterwarnings = [
-  "ignore::DeprecationWarning",
-  "ignore::UserWarning",
-]
-log_cli = "True"
-markers = [
-  "slow: slow tests",
-]
-minversion = "6.0"
-testpaths = "tests/"
-
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: nocover",
-    "raise NotImplementedError",
-    "raise NotImplementedError()",
-    "if __name__ == .__main__.:",
+    "--import-mode=importlib",
+    "--cov=llm4tracking",
+    "--color=yes",
+    "--durations=0",
+    "--strict-markers",
+    "--doctest-modules"
 ]

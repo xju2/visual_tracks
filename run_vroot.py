@@ -42,7 +42,7 @@ def main_function(cfg: DictConfig) -> None:
 
 
 @hydra.main(
-    config_path=root / "configs", config_name="run_vroot_task.yaml", version_base="1.2"
+    config_path=str(root / "configs"), config_name="run_vroot_task.yaml", version_base="1.2"
 )
 def main(cfg: DictConfig) -> None:
     main_function(cfg)

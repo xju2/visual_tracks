@@ -43,7 +43,7 @@ convention = "numpy"
 [tool.pytest.ini_options]
 addopts = [
     "--import-mode=importlib",
-    "--cov=llm4tracking",
+    "--cov=acctrack",
     "--color=yes",
     "--durations=0",
     "--strict-markers",

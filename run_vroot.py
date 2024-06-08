@@ -1,19 +1,12 @@
+
+import logging
+from pathlib import Path
+
+import hydra
 import pyrootutils
-
-root = pyrootutils.setup_root(
-    search_from=__file__,
-    indicator=[".git", "pyproject.toml"],
-    pythonpath=True,
-    dotenv=True,
-)
-
-import logging  # noqa: E402
-from pathlib import Path  # noqa: E402
-
-import hydra  # noqa: E402
-from omegaconf import DictConfig  # noqa: E402
-from acctrack import utils  # noqa: E402
-from acctrack.utils import resolvers  # noqa: E402
+from acctrack import utils
+from acctrack.utils import resolvers
+from omegaconf import DictConfig
 
 resolvers.add_my_resolvers()
 
@@ -40,6 +33,13 @@ def main_function(cfg: DictConfig) -> None:
 
     task.run()
 
+
+root = pyrootutils.setup_root(
+    search_from=__file__,
+    indicator=[".git", "pyproject.toml"],
+    pythonpath=True,
+    dotenv=True,
+)
 
 @hydra.main(
     config_path=str(root / "configs"), config_name="run_vroot_task.yaml", version_base="1.2"

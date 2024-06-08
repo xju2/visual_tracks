@@ -1,4 +1,3 @@
-
 import logging
 from pathlib import Path
 
@@ -41,8 +40,11 @@ root = pyrootutils.setup_root(
     dotenv=True,
 )
 
+
 @hydra.main(
-    config_path=str(root / "configs"), config_name="run_vroot_task.yaml", version_base="1.2"
+    config_path=str(root / "configs"),
+    config_name="run_vroot_task.yaml",
+    version_base="1.2",
 )
 def main(cfg: DictConfig) -> None:
     main_function(cfg)

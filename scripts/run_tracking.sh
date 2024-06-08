@@ -22,7 +22,7 @@ function gnn_tracking() {
         --preExec 'flags.Tracking.GNN.usePixelHitsOnly = True' \
         --inputRDOFile "${RDO_FILENAME}" \
         --outputAODFile 'test.aod.gnnreader.debug.root'  \
-        --maxEvents 1  2>&1 | tee log.gnnreader_debug.txt
+        --maxEvents 5  2>&1 | tee log.gnnreader_debug.txt
 }
 
 # 'HardScatter', 'All', 'PileUp'

@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-"""
-The script is to dump the ITkTrackCandidates from the ROOT file produced by DumpObject.
-"""
+"""The script is to dump the ITkTrackCandidates from the ROOT file produced by DumpObject."""
 
-import uproot
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
+import uproot
 
 
 def dumpITkTrackCandidates(
@@ -141,15 +141,16 @@ def dumpITkTrackCandidates(
             num_non_ghost_sp_per_track.append(len(unique_hits))
 
             if use_clusters:
+                # first  put 3 space points at the begininng for initial track parameter estimation
+                # then put the cluster index.
                 output_str += ",".join([str(x) for x in unique_hits[:3]])
                 output_str += ","
                 cluster_idx = clusters_on_tracks[itrk].to_numpy()
                 output_str += ",".join([str(x) for x in cluster_idx])
-            else:  # use spacepoints
-                if use_strip:
-                    output_str += ",".join([str(x) for x in unique_hits])
-                else:
-                    output_str += ",".join([str(x) for x in pixel_sps])
+            elif use_strip:
+                output_str += ",".join([str(x) for x in unique_hits])
+            else:
+                output_str += ",".join([str(x) for x in pixel_sps])
 
             output_str += "\n"
             # prepare for the next track
@@ -158,10 +159,7 @@ def dumpITkTrackCandidates(
         num_tracks.append(itrk)
 
         if not no_csv:
-            with open(
-                f"track_{run_number}_{event_number}.csv", "w", encoding="utf-8"
-            ) as f:
-                f.write(output_str)
+            Path(f"track_{run_number}_{event_number}.csv").write_text(output_str, encoding="utf-8")
 
     num_tracks = np.array(num_tracks)
     num_clusters_per_track = np.array(num_clusters_per_track)
@@ -274,7 +272,7 @@ if __name__ == "__main__":
         "--use-clusters", action="store_true", help="Use clusters to define tracks"
     )
     parser.add_argument(
-        "--no-strip", action="store_true", help="Use strip spacepoints to define tracks"
+        "--no-strip", action="store_true", help="Do not use strip spacepoints."
     )
     args = parser.parse_args()
 

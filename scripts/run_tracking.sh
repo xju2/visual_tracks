@@ -9,23 +9,51 @@ function gnn_tracking() {
     # --skipEvents 44
     # 'InDetConfig.ConfigurationHelpers.OnlyTrackingPreInclude'
     # --preExec 'flags.Tracking.GNN.usePixelHitsOnly = True; from AthOnnxComps.OnnxRuntimeFlags import OnnxRuntimeType; flags.AthOnnx.ExecutionProvider = OnnxRuntimeType.CUDA' \
+    # --postExec 'all:cfg.getService("AlgResourcePool").CountAlgorithmInstanceMisses = True' \
+    # --perfmon 'fullmonmt' \
 
     Reco_tf.py \
         --CA 'all:True' --autoConfiguration 'everything' \
         --conditionsTag 'all:OFLCOND-MC15c-SDR-14-05' \
         --geometryVersion 'all:ATLAS-P2-RUN4-03-00-00' \
-        --perfmon 'fullmonmt' \
         --multithreaded 'False' \
         --steering 'doRAWtoALL' \
         --digiSteeringConf 'StandardInTimeOnlyTruth' \
         --postInclude 'all:PyJobTransforms.UseFrontier' \
         --preInclude 'all:Campaigns.PhaseIIPileUp200' 'InDetConfig.ConfigurationHelpers.OnlyTrackingPreInclude' 'InDetGNNTracking.InDetGNNTrackingFlags.gnnTritonValidation' \
-        --preExec 'flags.Tracking.GNN.usePixelHitsOnly = True' \
-        --postExec 'all:cfg.getService("AlgResourcePool").CountAlgorithmInstanceMisses = True' \
+        --preExec 'flags.Tracking.GNN.usePixelHitsOnly = True; flags.Tracking.GNN.Triton.model = "ExatrkX4PixelPythonWithFilter"; flags.Tracking.GNN.Triton.url = "nid200396' \
         --inputRDOFile "${RDO_FILENAME}" \
         --outputAODFile 'test.aod.gnnreader.debug.root'  \
         --jobNumber '1' \
-        --maxEvents 5 2>&1 | tee log.gnnreader_debug.txt
+		--athenaopts='--loglevel=DEBUG' \
+        --maxEvents 1 2>&1 | tee log.gnnreader_debug.txt
+}
+
+function ckf_tracking() {
+    rm InDetIdDict.xml PoolFileCatalog.xml hostnamelookup.tmp eventLoopHeartBeat.txt
+    export ATHENA_CORE_NUMBER=1
+    # --skipEvents 44
+    # 'InDetConfig.ConfigurationHelpers.OnlyTrackingPreInclude'
+    # --preExec 'flags.Tracking.GNN.usePixelHitsOnly = True; from AthOnnxComps.OnnxRuntimeFlags import OnnxRuntimeType; flags.AthOnnx.ExecutionProvider = OnnxRuntimeType.CUDA' \
+    # --postExec 'all:cfg.getService("AlgResourcePool").CountAlgorithmInstanceMisses = True' \
+    # --perfmon 'fullmonmt' \
+
+    Reco_tf.py \
+        --CA 'all:True' --autoConfiguration 'everything' \
+        --conditionsTag 'all:OFLCOND-MC15c-SDR-14-05' \
+        --geometryVersion 'all:ATLAS-P2-RUN4-03-00-00' \
+        --multithreaded 'False' \
+        --steering 'doRAWtoALL' \
+        --digiSteeringConf 'StandardInTimeOnlyTruth' \
+        --postInclude 'all:PyJobTransforms.UseFrontier' \
+        --preInclude 'all:Campaigns.PhaseIIPileUp200' \
+        --preExec 'flags.Tracking.GNN.DumpObjects.doDetailedTracksInfo = True; flags.Tracking.GNN.DumpObjects.doClusters = False; flags.Tracking.GNN.DumpObjects.doParticles = False' \
+        --postExec 'from InDetGNNTracking.InDetGNNTrackingConfig import DumpObjectsCfg; cfg.merge(DumpObjectsCfg(flags))' \
+        --inputRDOFile "${RDO_FILENAME}" \
+        --outputAODFile 'test.aod.ckf.debug.root'  \
+        --jobNumber '1' \
+		--athenaopts='--loglevel=INFO' \
+        --maxEvents 1 2>&1 | tee log.ckf.txt
 }
 
 # 'HardScatter', 'All', 'PileUp'
@@ -42,4 +70,6 @@ function run_idpvm() {
 }
 
 
-gnn_tracking
+# gnn_tracking
+
+ckf_tracking

@@ -1,3 +1,5 @@
+import numpy as np
+
 translator = {
     "Part_event_number": "subevent",
     "Part_barcode": "barcode",
@@ -57,11 +59,15 @@ translator = {
     "CLparticleLink_barcode": "barcode",
     "DTTindex": "dtt_trkid",
     "DTTsize": "dtt_num_matched",
-    "DTTtrajectory_eventindex": "dtt_subevent",
+    "DTTtrajectory_eventindex": "dtt_eventindex",
     "DTTtrajectory_barcode": "dtt_barcode",
     "DTTstTruth_subDetType": "dtt_true_hits",
     "DTTstTrack_subDetType": "dtt_track_hits",
     "DTTstCommon_subDetType": "dtt_common_hits",
+    "TTCevent_index": ("subevent", np.int64),
+    "TTCparticle_link": ("barcode", np.int64),
+    "TTCprobability": ("probability", float),
+    "TRKindex": ("trkid", np.int64),
 }
 
 event_branch_names = ["run_number", "event_number"]
@@ -81,12 +87,21 @@ detailed_truth_info = [(b, c) for b, c in translator.items() if b.startswith("DT
 detailed_truth_branch_names = [b for b, _ in detailed_truth_info]
 detailed_truth_col_names = [c for _, c in detailed_truth_info]
 
+reco_track_info = [
+    (b, c) for b, c in translator.items() if b.startswith("TT") or b.startswith("TRK")
+]
+reco_track_branch_names = [b for b, _ in reco_track_info]
+reco_track_col_names = [c[0] for _, c in reco_track_info]
+reco_track_col_types = {c[0]: c[1] for _, c in reco_track_info}
+
+
 all_branches = (
     event_branch_names
     + particle_branch_names
     + spacepoint_branch_names
     + cluster_branch_names
     + detailed_truth_branch_names
+    + reco_track_branch_names
 )
 
 cluster_link_branch_names = ["CLparticleLink_eventIndex", "CLparticleLink_barcode"]

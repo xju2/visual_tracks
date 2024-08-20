@@ -183,16 +183,30 @@ class AthenaRawRootReader(BaseTrackDataReader):
         self._save("truth", truth, event_number)
 
         # read detailed truth tracks (dtt)
+        # a reoc track may be matched to multiple truth tracks.
+        # detailed truth tracks contains all the truth tracks that are matched to a reco track.
+        # but we don't need all the info.
+        # Instead, we will only keep the most probable truth track.
+
         dtt_arrays = [
             tracks_info[x].to_numpy()
             for x in utils_raw_root.detailed_truth_branch_names
             if "trajectory" not in x
         ]
+        dtt_particles = [
+            tracks_info[x].to_list()
+            for x in utils_raw_root.detailed_truth_branch_names
+            if "trajectory" in x
+        ]
+        # only keep the first matched particle info.
+        dtt_particle_arrays = [[min(x) for x in pp] for pp in dtt_particles]
         detailed_matching = pd.DataFrame(
             np.array(
                 [
                     dtt_arrays[0],
                     dtt_arrays[1],
+                    dtt_particle_arrays[0],
+                    dtt_particle_arrays[1],
                     dtt_arrays[2][:, 0],
                     dtt_arrays[2][:, 1],
                     dtt_arrays[3][:, 0],
@@ -204,6 +218,8 @@ class AthenaRawRootReader(BaseTrackDataReader):
             columns=[
                 "trkid",
                 "num_matched",
+                "subevent",
+                "barcode",
                 "true_pixel_hits",
                 "true_sct_hits",
                 "reco_pixel_hits",
@@ -213,6 +229,14 @@ class AthenaRawRootReader(BaseTrackDataReader):
             ],
         )
         self._save("detailed_matching", detailed_matching, event_number)
+
+        # read reco tracks information.
+        track_arrays = [tracks_info[x] for x in utils_raw_root.reco_track_branch_names]
+        track_info = pd.DataFrame(
+            dict(zip(utils_raw_root.reco_track_col_names, track_arrays))
+        )
+        track_info = track_info.astype(utils_raw_root.reco_track_col_types)
+        self._save("tracks", track_info, event_number)
 
         return event_number
 
@@ -238,6 +262,8 @@ class AthenaRawRootReader(BaseTrackDataReader):
         self.particles = self._read("particles", evtid)
         self.spacepoints = self._read("spacepoints", evtid)
         self.truth = self._read("truth", evtid)
+        self.detailed_matching = self._read("detailed_matching", evtid)
+        self.tracks = self._read("tracks", evtid)
         if any(
             x is None
             for x in [self.clusters, self.particles, self.spacepoints, self.truth]

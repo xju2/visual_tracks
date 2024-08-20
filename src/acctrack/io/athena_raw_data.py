@@ -77,14 +77,14 @@ class AthenaRawDataReader(BaseTrackDataReader):
     def get_filename(
         self, prefix, evtid, run_number, event_number, suffix="txt"
     ) -> str:
-        """Get the input filename for the given event id or event number"""
+        """Get the input filename for the given event id or event number."""
         namepatch = self.getnamepatch(evtid, run_number, event_number)
         return self.inputdir / "{}{}.{}".format(prefix, namepatch, suffix)
 
     def get_outname(
         self, prefix, evtid, run_number, event_number, suffix="parquet", **kwargs
     ) -> str:
-        """Get the filename for the given event id or event number"""
+        """Get the filename for the given event id or event number."""
         namepatch = self.getnamepatch(evtid, run_number, event_number)
         return self.outdir / "{}{}.{}".format(prefix, namepatch, suffix)
 
@@ -97,7 +97,7 @@ class AthenaRawDataReader(BaseTrackDataReader):
         event_number=None,
         **kwargs,
     ):
-        """Read the data from the input directory"""
+        """Read the data from the input directory."""
         outname = Path(
             self.get_outname(prefix, evtid, run_number, event_number, **kwargs)
         )
@@ -112,9 +112,10 @@ class AthenaRawDataReader(BaseTrackDataReader):
     def read_track_candidates(
         self, evtid=None, run_number=None, event_number=None
     ) -> List[List[int]]:
-        """Read track candidates from the input directory
+        """Read track candidates from the input directory.
 
-        Return:
+        Return
+        ------
             List[List[int]]: each element is a list of spacepoint indices
         """
         self.tracks = self.read_wrap(
@@ -130,13 +131,14 @@ class AthenaRawDataReader(BaseTrackDataReader):
     def read_track_candidates_clusters(
         self, evtid=None, run_number=None, event_number=None
     ) -> List[List[int]]:
-        """Read track candidates from the input directory
+        """Read track candidates from the input directory.
 
-        Return:
+        Return
+        ------
             List[List[int]]: each element is a list of cluster indices
         """
         self.tracks_clusters = self.read_wrap(
-            reader_utils.read_track_candidates_clusters,
+            reader_utils.read_track_candidates,
             "trackcandidates_clusters",
             evtid,
             run_number,

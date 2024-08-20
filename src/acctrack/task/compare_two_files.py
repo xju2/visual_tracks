@@ -1,10 +1,10 @@
 from pathlib import Path
 
 from acctrack.task.base import TaskBase
-from acctrack.utils import get_pylogger
-from acctrack.tools.reader import TH1FileHandle
-from acctrack.tools.ratio import create_ratio
 from acctrack.tools import adder
+from acctrack.tools.ratio import create_ratio
+from acctrack.tools.reader import TH1FileHandle
+from acctrack.utils import get_pylogger
 
 logger = get_pylogger(__name__)
 

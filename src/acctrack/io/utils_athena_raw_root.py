@@ -1,52 +1,161 @@
-"""Utilities for reading the ROOT files dumped from the DumpObject."""
-from typing import Dict
-
-import numpy as np
-
-
-def create_arrays(branch_arrays: Dict[str, np.ndarray]):
-    variables = list(branch_arrays.keys())
-    num_evts = len(branch_arrays[variables[0]])
-
-    all_arrays = []
-    for i in range(num_evts):
-        inputs = [branch_arrays[x][i] for x in variables]
-        array = np.stack(inputs, axis=1)
-        all_arrays.append(array)
-
-    return all_arrays
-
-
-branch_rename_map = {
-    "index": "cluster_id",
-    "x": "cluster_x",
-    "y": "cluster_y",
-    "z": "cluster_z",
-    "pixel_count": "pixel_count",
-    "loc_eta": "leta",
-    "loc_phi": "lphi",
-    "loc_direction1": "localDir0",
-    "loc_direction2": "localDir1",
-    "loc_direction3": "localDir2",
-    "Jan_loc_direction1": "lengthDir0",
-    "Jan_loc_direction2": "lengthDir1",
-    "Jan_loc_direction3": "lengthDir2",
-    "moduleID": "module_id",  # <TODO, not a correct module id>
+translator = {
+    "Part_event_number": "subevent",
+    "Part_barcode": "barcode",
+    "Part_px": "px",
+    "Part_py": "py",
+    "Part_pz": "pz",
+    "Part_pt": "pt",
+    "Part_eta": "eta",
+    "Part_vx": "vx",
+    "Part_vy": "vy",
+    "Part_vz": "vz",
+    "Part_radius": "radius",
+    "Part_status": "status",
+    "Part_charge": "charge",
+    "Part_pdg_id": "pdgId",
+    "Part_passed": "pass",
+    "Part_vProdNin": "vProdNIn",
+    "Part_vProdNout": "vProdNOut",
+    "Part_vProdStatus": "vProdStatus",
+    "Part_vProdBarcode": "vProdBarcode",
+    "SPindex": "hit_id",
+    "SPx": "x",
+    "SPy": "y",
+    "SPz": "z",
+    "SPCL1_index": "cluster_index_1",
+    "SPCL2_index": "cluster_index_2",
+    "SPisOverlap": "SPisOverlap",
+    "CLindex": "cluster_id",
+    "CLhardware": "hardware",
+    "CLx": "cluster_x",
+    "CLy": "cluster_y",
+    "CLz": "cluster_z",
+    "CLbarrel_endcap": "barrel_endcap",
+    "CLlayer_disk": "layer_disk",
+    "CLeta_module": "eta_module",
+    "CLphi_module": "phi_module",
+    "CLside": "side",
+    "CLmoduleID": "module_id",
+    "CLpixel_count": "count",
+    "CLcharge_count": "charge_count",
+    "CLloc_eta": "loc_eta",
+    "CLloc_phi": "loc_phi",
+    "CLloc_direction1": "localDir0",
+    "CLloc_direction2": "localDir1",
+    "CLloc_direction3": "localDir2",
+    "CLJan_loc_direction1": "lengthDir0",
+    "CLJan_loc_direction2": "lengthDir1",
+    "CLJan_loc_direction3": "lengthDir2",
+    "CLglob_eta": "glob_eta",
+    "CLglob_phi": "glob_phi",
+    "CLeta_angle": "eta_angle",
+    "CLphi_angle": "phi_angle",
+    "CLnorm_x": "norm_x",
+    "CLnorm_y": "norm_y",
+    "CLnorm_z": "norm_z",
+    "CLparticleLink_eventIndex": "subevent",
+    "CLparticleLink_barcode": "barcode",
+    "DTTindex": "dtt_trkid",
+    "DTTsize": "dtt_num_matched",
+    "DTTtrajectory_eventindex": "dtt_subevent",
+    "DTTtrajectory_barcode": "dtt_barcode",
+    "DTTstTruth_subDetType": "dtt_true_hits",
+    "DTTstTrack_subDetType": "dtt_track_hits",
+    "DTTstCommon_subDetType": "dtt_common_hits",
 }
 
-# define branch names
-# they are taken from
-# https://gitlab.cern.ch/gnn4itkteam/athena/-/blob/21.9.26-root-and-csv-files-from-RDO-v1/Tracking/TrkDumpAlgs/src/ROOT2CSVconverter.cpp
-
-# event info
 event_branch_names = ["run_number", "event_number"]
+particle_info = [(b, c) for b, c in translator.items() if b.startswith("Part_")]
+particle_branch_names = [b for b, _ in particle_info]
+particle_col_names = [c for _, c in particle_info]
 
+spacepoint_info = [(b, c) for b, c in translator.items() if b.startswith("SP")]
+spacepoint_branch_names = [b for b, _ in spacepoint_info]
+spacepoint_col_names = [c for _, c in spacepoint_info]
 
-# particles
-particle_branch_prefix = "Part_"
-# "vParentID", "vParentBarcode" are not used.
-particle_columns = [
-    "event_number",
+cluster_info = [(b, c) for b, c in translator.items() if b.startswith("CL")]
+cluster_branch_names = [b for b, _ in cluster_info]
+cluster_col_names = [c for _, c in cluster_info]
+
+detailed_truth_info = [(b, c) for b, c in translator.items() if b.startswith("DTT")]
+detailed_truth_branch_names = [b for b, _ in detailed_truth_info]
+detailed_truth_col_names = [c for _, c in detailed_truth_info]
+
+all_branches = (
+    event_branch_names
+    + particle_branch_names
+    + spacepoint_branch_names
+    + cluster_branch_names
+    + detailed_truth_branch_names
+)
+
+cluster_link_branch_names = ["CLparticleLink_eventIndex", "CLparticleLink_barcode"]
+# To get the same column order as with txt reading
+truth_col_order = [
+    "hit_id",
+    "x",
+    "y",
+    "z",
+    "cluster_index_1",
+    "cluster_index_2",
+    "hardware",
+    "cluster_x_1",
+    "cluster_y_1",
+    "cluster_z_1",
+    "barrel_endcap",
+    "layer_disk",
+    "eta_module",
+    "phi_module",
+    "side_1",
+    "norm_x_1",
+    "norm_y_1",
+    "norm_z_1",
+    "count_1",
+    "charge_count_1",
+    "loc_eta_1",
+    "loc_phi_1",
+    "localDir0_1",
+    "localDir1_1",
+    "localDir2_1",
+    "lengthDir0_1",
+    "lengthDir1_1",
+    "lengthDir2_1",
+    "glob_eta_1",
+    "glob_phi_1",
+    "eta_angle_1",
+    "phi_angle_1",
+    "particle_id_1",
+    "cluster_x_2",
+    "cluster_y_2",
+    "cluster_z_2",
+    "side_2",
+    "norm_x_2",
+    "norm_y_2",
+    "norm_z_2",
+    "count_2",
+    "charge_count_2",
+    "loc_eta_2",
+    "loc_phi_2",
+    "localDir0_2",
+    "localDir1_2",
+    "localDir2_2",
+    "lengthDir0_2",
+    "lengthDir1_2",
+    "lengthDir2_2",
+    "glob_eta_2",
+    "glob_phi_2",
+    "eta_angle_2",
+    "phi_angle_2",
+    "particle_id_2",
+    "particle_id",
+    "region",
+    "module_id",
+    "SPisOverlap",
+]
+
+particles_col_order = [
+    "particle_id",
+    "subevent",
     "barcode",
     "px",
     "py",
@@ -59,72 +168,11 @@ particle_columns = [
     "radius",
     "status",
     "charge",
-    "pdg_id",
-    "passed",
-    "vProdNin",
-    "vProdNout",
+    "pdgId",
+    "pass",
+    "vProdNIn",
+    "vProdNOut",
     "vProdStatus",
     "vProdBarcode",
+    "num_clusters",
 ]
-particle_branch_names = [particle_branch_prefix + col for col in particle_columns]
-
-# cluster branch names
-cluster_branch_prefix = "CL"
-cluster_columns = [
-    "index",
-    "moduleID",
-    "x",
-    "y",
-    "z",
-    "barrel_endcap",
-    "layer_disk",
-    "eta_module",
-    "phi_module",
-    "side",
-    "pixel_count",
-    "charge_count",
-    "loc_eta",
-    "loc_phi",
-    "loc_direction1",
-    "loc_direction2",
-    "loc_direction3",
-    "Jan_loc_direction1",
-    "Jan_loc_direction2",
-    "Jan_loc_direction3",
-    "glob_eta",
-    "glob_phi",
-    "eta_angle",
-    "phi_angle",
-    "norm_x",
-    "norm_y",
-    "norm_z",
-]
-cluster_branch_names = [cluster_branch_prefix + col for col in cluster_columns]
-
-# cluster link to particles
-# one cluster may link to multiple particles
-coluster_link_columns = ["particleLink_eventIndex", "particleLink_barcode"]
-cluster_link_branch_names = [
-    cluster_branch_prefix + col for col in coluster_link_columns
-]
-
-# spacepoint branch names
-spacepoint_branch_prefix = "SP"
-spacepoint_columns = [
-    "index",
-    "x",
-    "y",
-    "z",
-    "CL1_index",
-    "CL2_index",
-]
-spacepoint_branch_names = [spacepoint_branch_prefix + col for col in spacepoint_columns]
-
-all_branches = (
-    event_branch_names
-    + particle_branch_names
-    + cluster_branch_names
-    + ["CLhardware"]
-    + cluster_link_branch_names
-    + spacepoint_branch_names
-)

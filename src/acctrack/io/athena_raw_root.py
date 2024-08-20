@@ -1,21 +1,22 @@
-from typing import Dict, Tuple, List
+from __future__ import annotations
+
 from pathlib import Path
 
-import json
+import awkward
+import numpy as np
+import pandas as pd
 import uproot
 
-import pandas as pd
-import numpy as np
-
-from acctrack.io import utils_athena_raw_root as utils_raw_root
 from acctrack.io import utils_athena_raw as utils_raw_csv
+from acctrack.io import utils_athena_raw_root as utils_raw_root
 from acctrack.io.base import BaseTrackDataReader
 
 
 class AthenaRawRootReader(BaseTrackDataReader):
     """Read Raw ROOT files created from RDO files with the dumping file.
+
     The code that creates the ROOT file can be found
-    https://gitlab.cern.ch/gnn4itkteam/athena/-/tree/21.9.26-root-and-csv-files-from-RDO-v2/Tracking/TrkDumpAlgs
+    [link](https://gitlab.cern.ch/atlas/athena/-/tree/main/InnerDetector/InDetGNNTracking?ref_type=heads)
     """
 
     def __init__(
@@ -24,31 +25,51 @@ class AthenaRawRootReader(BaseTrackDataReader):
         super().__init__(inputdir, output_dir, overwrite, name)
 
         # find all files in inputdir
-        self.root_files = sorted(list(self.inputdir.glob("*.root")))
+        root_files = sorted(self.inputdir.glob("*.root"))
 
         self.tree_name = "GNN4ITk"
 
-        # now we read all files and determine the starting event id for each file
-        self.file_evtid = [0]
-        for filename in self.root_files:
-            try:
-                num_entries = list(
-                    uproot.num_entries(str(filename) + ":" + self.tree_name)
-                )[0][-1]
-            except OSError:
-                print(f"Error reading file: {filename}")
-                self.root_files.remove(filename)
+        # create a map: event number -> file index and entry index
+        self.event_map: dict[int, tuple[int, int]] = {}
+        file_idx = 0
+        self.root_files = []
+        self.tot_evts = 0
+        for filename in root_files:
+            file_handle = uproot.open(filename)
+            if self.tree_name not in file_handle:
+                print(f"Tree {self.tree_name} is not in {filename}")
                 continue
 
-            start_evtid = self.file_evtid[-1] + num_entries
-            self.file_evtid.append(start_evtid)
+            events = uproot.open(f"{filename}:{self.tree_name}")
+            event_numbers = events.arrays(["event_number"])["event_number"]
+            num_entries = len(event_numbers)
+            self.event_map.update(
+                {
+                    event_number: (file_idx, entry)
+                    for event_number, entry in zip(event_numbers, range(num_entries))
+                }
+            )
+            self.root_files.append(filename)
+            self.tot_evts += num_entries
+            file_idx += 1
 
         self.num_files = len(self.root_files)
         print(
-            f"{self.inputdir} contains  {self.num_files} files and total {self.file_evtid[-1]} events."
+            f"{self.inputdir} contains  {self.num_files} files and total {self.tot_evts} events."
         )
 
-    def read_file(self, file_idx: int = 0, max_evts: int = -1) -> uproot.models.TTree:
+    def read_file(self, file_idx: int = 0, max_evts: int = -1) -> list[int]:
+        """Read all events from the ROOT file. Each event is saved in parquet format.
+
+        Args
+        ----
+            file_idx: int, index of the ROOT file to read in the input directory.
+            max_evts: int, maximum number of events to read. If -1, read all events.
+
+        Returns
+        -------
+            list of event numbers: list[int]. Return None if file_idx is out of range.
+        """
         if file_idx >= self.num_files:
             print(
                 f"File index {file_idx} is out of range. Max index is {self.num_files - 1}"
@@ -56,127 +77,144 @@ class AthenaRawRootReader(BaseTrackDataReader):
             return None
         filename = self.root_files[file_idx]
         print(f"Reading file: {filename}")
-        file = uproot.open(filename)
-        tree = file[self.tree_name]
-        evtid = self.file_evtid[file_idx]
+        tree = uproot.open(f"{filename}:{self.tree_name}")
 
-        self.tree = tree
-        file_map: Dict[int, Tuple[int, int]] = {}
-        out_filenames = ["particles", "clusters", "spacepoints", "truth"]
-        idx = 0
-        for batch in tree.iterate(
-            step_size=1, filter_name=utils_raw_root.all_branches, library="np"
-        ):
-            idx += 1
-            if max_evts > 0 and idx >= max_evts:
-                print(f"Reaching the maximum {max_evts} events. Stop.")
-                break
+        all_event_info = tree.arrays(utils_raw_root.all_branches)
+        num_events = len(all_event_info["event_number"])
+        print(f"Number of events: {num_events} in file {filename}.")
+        if max_evts > 0 and max_evts < num_events:
+            print(f"Reading only {max_evts} events.")
+            num_events = max_evts
 
-            # the index 0 is because we have step_size = 1
-            # read event info
-            run_number = int(batch["run_number"][0])
-            event_number = int(batch["event_number"][0])
-            file_map[evtid] = (run_number, event_number)
+        event_numbers = [
+            self.process_one_event(all_event_info[evtid]) for evtid in range(num_events)
+        ]
+        return event_numbers
 
-            # check if all files exists. If yes, skip the event
-            is_file_exist = [self._save(x, None, evtid) for x in out_filenames]
-            if not self.overwrite and all(is_file_exist):
-                evtid += 1
-                continue
+    def process_one_event(self, tracks_info: awkward.highlevel.Array) -> int:
+        """Process one event and save the data in parquet format.
 
-            # read particles
-            particle_arrays = [
-                batch[x][0] for x in utils_raw_root.particle_branch_names
+        Args
+        ----
+            tracks_info: awkward.highlevel.Array, the data of one event.
+
+        Returns
+        -------
+            event_number: int, the event number of the processed event.
+        """
+        event_number = tracks_info["event_number"]
+
+        # read particles
+        particle_arrays = [tracks_info[x] for x in utils_raw_root.particle_branch_names]
+        particles = pd.DataFrame(
+            dict(zip(utils_raw_root.particle_col_names, particle_arrays))
+        )
+        # convert barcode to 7 digits
+        particle_ids = utils_raw_csv.get_particle_ids(particles)
+        particles.insert(0, "particle_id", particle_ids)
+        particles = utils_raw_csv.particles_of_interest(particles)
+        self._save("particles", particles, event_number)
+
+        # read clusters
+        cluster_arrays = [
+            tracks_info[x]
+            for x in utils_raw_root.cluster_branch_names
+            if x
+            not in {"CLhardware", "CLparticleLink_barcode", "CLparticleLink_eventIndex"}
+        ]
+        # hardware is a std::vector, need special treatment
+        cluster_hardware = np.array(tracks_info["CLhardware"].tolist(), dtype=str)
+        cluster_columns = [*utils_raw_root.cluster_col_names, "hardware"]
+        cluster_arrays.append(cluster_hardware)
+        clusters = pd.DataFrame(dict(zip(cluster_columns, cluster_arrays)))
+
+        clusters = clusters.astype({"hardware": "str", "barrel_endcap": "int32"})
+        # read truth links for each cluster
+        subevent_name, barcode_name = utils_raw_root.cluster_link_branch_names
+        matched_subevents = tracks_info[subevent_name].tolist()
+        matched_barcodes = tracks_info[barcode_name].tolist()
+        max_matched = max(len(x) for x in matched_subevents)
+
+        # loop over clusters matched particles
+        matched_info = []
+        for entry_idx in range(max_matched):
+            matched_info += [
+                (cluster_id, subevent[entry_idx], barcode[entry_idx])
+                for cluster_id, subevent, barcode in zip(
+                    clusters["cluster_id"].values,
+                    matched_subevents,
+                    matched_barcodes,
+                )
+                if len(subevent) > entry_idx
             ]
-            particles = pd.DataFrame(
-                dict(zip(utils_raw_root.particle_columns, particle_arrays))
-            )
-            particles = particles.rename(columns={"event_number": "subevent"})
-            # convert barcode to 7 digits
-            particle_ids = utils_raw_csv.get_particle_ids(particles)
-            particles.insert(0, "particle_id", particle_ids)
-            particles = utils_raw_csv.particles_of_interest(particles)
-            self._save("particles", particles, evtid)
+        cluster_matched = pd.DataFrame(
+            matched_info, columns=["cluster_id", "subevent", "barcode"]
+        )
+        cluster_matched["particle_id"] = utils_raw_csv.get_particle_ids(cluster_matched)
+        clusters = clusters.merge(cluster_matched, on="cluster_id", how="left")
 
-            # read clusters
-            cluster_arrays = [batch[x][0] for x in utils_raw_root.cluster_branch_names]
-            # hardware is a std::vector, need special treatment
-            cluster_hardware = np.array(batch["CLhardware"][0].tolist(), dtype=np.str)
-            cluster_columns = utils_raw_root.cluster_columns + ["hardware"]
-            cluster_arrays.append(cluster_hardware)
-            clusters = pd.DataFrame(dict(zip(cluster_columns, cluster_arrays)))
-            clusters = clusters.rename(columns=utils_raw_root.branch_rename_map)
-            clusters["cluster_id"] = clusters["cluster_id"] - 1
-            clusters = clusters.astype({"hardware": "str", "barrel_endcap": "int32"})
-            # read truth links for each cluster
-            subevent_name, barcode_name = utils_raw_root.cluster_link_branch_names
-            matched_subevents = batch[subevent_name][0].tolist()
-            matched_barcodes = batch[barcode_name][0].tolist()
-            max_matched = max([len(x) for x in matched_subevents])
-            # loop over clusters matched particles
-            matched_info = []
-            for idx in range(max_matched):
-                matched_info += [
-                    (cluster_id, subevent[idx], barcode[idx])
-                    for cluster_id, subevent, barcode in zip(
-                        clusters["cluster_id"].values,
-                        matched_subevents,
-                        matched_barcodes,
-                    )
-                    if len(subevent) > idx
-                ]
-            cluster_matched = pd.DataFrame(
-                matched_info, columns=["cluster_id", "subevent", "barcode"]
-            )
-            cluster_matched["particle_id"] = utils_raw_csv.get_particle_ids(
-                cluster_matched
-            )
-            clusters = clusters.merge(cluster_matched, on="cluster_id", how="left")
+        self._save("clusters", clusters, event_number)
 
-            self._save("clusters", clusters, evtid)
+        # read spacepoints
+        spacepoint_arrays = [
+            tracks_info[x] for x in utils_raw_root.spacepoint_branch_names
+        ]
+        spacepoints = pd.DataFrame(
+            dict(zip(utils_raw_root.spacepoint_col_names, spacepoint_arrays))
+        )
+        self._save("spacepoints", spacepoints, event_number)
 
-            # read spacepoints
-            spacepoint_arrays = [
-                batch[x][0] for x in utils_raw_root.spacepoint_branch_names
-            ]
-            spacepoints = pd.DataFrame(
-                dict(zip(utils_raw_root.spacepoint_columns, spacepoint_arrays))
-            )
-            spacepoints = spacepoints.rename(
-                columns={
-                    "index": "hit_id",
-                    "CL1_index": "cluster_index_1",
-                    "CL2_index": "cluster_index_2",
-                }
-            )
-            self._save("spacepoints", spacepoints, evtid)
+        pixel_hits = spacepoints[spacepoints["cluster_index_2"] == -1]
+        strip_hits = spacepoints[spacepoints["cluster_index_2"] != -1]
 
-            pixel_hits = spacepoints[spacepoints["cluster_index_2"] == -1]
-            strip_hits = spacepoints[spacepoints["cluster_index_2"] != -1]
+        # matching spacepoints to particles through clusters
+        truth = utils_raw_csv.truth_match_clusters(pixel_hits, strip_hits, clusters)
+        # regional labels
+        # region_labels = {
+        #     1: {"hardware": "PIXEL", "barrel_endcap": -2},
+        #     2: {"hardware": "STRIP", "barrel_endcap": -2},
+        #     3: {"hardware": "PIXEL", "barrel_endcap": 0},
+        #     4: {"hardware": "STRIP", "barrel_endcap": 0},
+        #     5: {"hardware": "PIXEL", "barrel_endcap": 2},
+        #     6: {"hardware": "STRIP", "barrel_endcap": 2},
+        # }
+        truth = utils_raw_csv.merge_spacepoints_clusters(truth, clusters)
+        # truth = utils_raw_csv.add_region_labels(truth, region_labels)
+        self._save("truth", truth, event_number)
 
-            # matching spacepoints to particles through clusters
-            truth = utils_raw_csv.truth_match_clusters(pixel_hits, strip_hits, clusters)
-            # regional labels
-            region_labels = dict(
+        # read detailed truth tracks (dtt)
+        dtt_arrays = [
+            tracks_info[x].to_numpy()
+            for x in utils_raw_root.detailed_truth_branch_names
+            if "trajectory" not in x
+        ]
+        detailed_matching = pd.DataFrame(
+            np.array(
                 [
-                    (1, {"hardware": "PIXEL", "barrel_endcap": -2}),
-                    (2, {"hardware": "STRIP", "barrel_endcap": -2}),
-                    (3, {"hardware": "PIXEL", "barrel_endcap": 0}),
-                    (4, {"hardware": "STRIP", "barrel_endcap": 0}),
-                    (5, {"hardware": "PIXEL", "barrel_endcap": 2}),
-                    (6, {"hardware": "STRIP", "barrel_endcap": 2}),
+                    dtt_arrays[0],
+                    dtt_arrays[1],
+                    dtt_arrays[2][:, 0],
+                    dtt_arrays[2][:, 1],
+                    dtt_arrays[3][:, 0],
+                    dtt_arrays[3][:, 1],
+                    dtt_arrays[4][:, 0],
+                    dtt_arrays[4][:, 1],
                 ]
-            )
-            truth = utils_raw_csv.merge_spacepoints_clusters(truth, clusters)
-            truth = utils_raw_csv.add_region_labels(truth, region_labels)
-            self._save("truth", truth, evtid)
-            evtid += 1
+            ).T,
+            columns=[
+                "trkid",
+                "num_matched",
+                "true_pixel_hits",
+                "true_sct_hits",
+                "reco_pixel_hits",
+                "reco_sct_hits",
+                "common_pixel_hits",
+                "common_sct_hits",
+            ],
+        )
+        self._save("detailed_matching", detailed_matching, event_number)
 
-        # save file map
-        js_fname = f"filemap_{file_idx}.json"
-        with open(self.outdir / js_fname, "w") as f:
-            json.dump(file_map, f)
-        return tree
+        return event_number
 
     def _save(self, outname: str, df: pd.DataFrame, evtid: int) -> bool:
         outname = self.get_outname(outname, evtid)
@@ -201,16 +239,13 @@ class AthenaRawRootReader(BaseTrackDataReader):
         self.spacepoints = self._read("spacepoints", evtid)
         self.truth = self._read("truth", evtid)
         if any(
-            [
-                x is None
-                for x in [self.clusters, self.particles, self.spacepoints, self.truth]
-            ]
+            x is None
+            for x in [self.clusters, self.particles, self.spacepoints, self.truth]
         ):
-            print("event {evtid} are not processed.")
+            print(f"event {evtid} are not processed.")
             print("please run `read_file()` first!")
             return False
-        else:
-            return True
+        return True
 
     def get_event_info(self, file_idx: int = 0) -> pd.DataFrame:
         if file_idx >= self.num_files:
@@ -226,25 +261,54 @@ class AthenaRawRootReader(BaseTrackDataReader):
             event_info = tree.arrays(utils_raw_root.event_branch_names, library="pd")
             return event_info
 
-    def find_event(self, event_numbers: List[int]):
+    def find_event(self, event_numbers: list[int]):
         # we loop over all availabel root files
         # check if the requrested event number is in the file
         # if yes, we write down the file name and the event number
         # if no, we continue to the next file
 
         # event_number_map: Dict[int, str] = dict([(x, "") for x in event_numbers])
-        event_number_map: Dict[int, str] = {}
+        event_number_map: dict[int, str] = {}
 
         for root_file_idx in range(len(self.root_files)):
             event_info = self.get_event_info(root_file_idx)
             for event_number in event_numbers:
-                if event_number in event_info["event_number"].values:
+                if event_number in event_info["event_number"].to_numpy():
                     print(
                         f"Event {event_number} is in file {self.root_files[root_file_idx]}"
                     )
                     event_number_map[event_number] = self.root_files[root_file_idx]
 
                     self.read_file(root_file_idx)
-                    self.truth.to_csv(f"event{event_number:06d}-truth.csv")
+                    self.truth.to_csv(f"event{event_number:09d}-truth.csv")
 
         return event_number_map
+
+    def match_to_truth(self) -> pd.DataFrame:
+        """Match a reco track to a truth track
+        only if all reco track contents are from the truth track.
+        """
+        detailed = self.detailed_matching
+        all_matched_to_truth = detailed[
+            (detailed.reco_pixel_hits == detailed.common_pixel_hits)
+            & (detailed.reco_sct_hits == detailed.common_sct_hits)
+        ]
+        num_all_matched_to_truth = len(all_matched_to_truth)
+
+        frac_all_matched_to_truth = num_all_matched_to_truth / len(detailed)
+        print(
+            f"All matched to truth {self.name}: ",
+            num_all_matched_to_truth,
+            len(detailed),
+            frac_all_matched_to_truth,
+        )
+
+        # Check that each reco track is matched to only one truth track
+        _, counts = np.unique(all_matched_to_truth.trkid.values, return_counts=True)
+        assert np.all(
+            counts == 1
+        ), "Some reco tracks are matched to multiple truth tracks"
+
+        self.tracks_matched_to_truth = all_matched_to_truth
+
+        return all_matched_to_truth

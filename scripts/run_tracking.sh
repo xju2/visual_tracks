@@ -19,9 +19,10 @@ function gnn_tracking() {
         --multithreaded 'False' \
         --steering 'doRAWtoALL' \
         --digiSteeringConf 'StandardInTimeOnlyTruth' \
-        --postInclude 'all:PyJobTransforms.UseFrontier' \
+        --postInclude 'all:PyJobTransforms.UseFrontier,InDetConfig.SiSpacePointFormationConfig.InDetToXAODSpacePointConversionCfg' \
         --preInclude 'all:Campaigns.PhaseIIPileUp200' 'InDetConfig.ConfigurationHelpers.OnlyTrackingPreInclude' 'InDetGNNTracking.InDetGNNTrackingFlags.gnnTritonValidation' \
-        --preExec 'flags.Tracking.GNN.usePixelHitsOnly = True; flags.Tracking.GNN.Triton.model = "ExatrkX4PixelPythonWithFilter"; flags.Tracking.GNN.Triton.url = "nid200396' \
+        --preExec 'flags.Tracking.GNN.usePixelHitsOnly = True; flags.Tracking.GNN.Triton.model = "ExatrkX4PixelPythonWithFilter"; flags.Tracking.GNN.Triton.url = "nid200256"; flags.Tracking.GNN.DumpObjects.doDetailedTracksInfo = True; flags.Tracking.GNN.DumpObjects.doClusters = True; flags.Tracking.GNN.DumpObjects.doParticles = True' \
+        --postExec 'from InDetGNNTracking.InDetGNNTrackingConfig import DumpObjectsCfg; cfg.merge(DumpObjectsCfg(flags)); msg=cfg.getService("MessageSvc"); msg.infoLimit = 9999999; msg.debugLimit = 9999999; msg.verboseLimit = 9999999;' \
         --inputRDOFile "${RDO_FILENAME}" \
         --outputAODFile 'test.aod.gnnreader.debug.root'  \
         --jobNumber '1' \
@@ -37,6 +38,8 @@ function ckf_tracking() {
     # --preExec 'flags.Tracking.GNN.usePixelHitsOnly = True; from AthOnnxComps.OnnxRuntimeFlags import OnnxRuntimeType; flags.AthOnnx.ExecutionProvider = OnnxRuntimeType.CUDA' \
     # --postExec 'all:cfg.getService("AlgResourcePool").CountAlgorithmInstanceMisses = True' \
     # --perfmon 'fullmonmt' \
+        # --preExec 'flags.Tracking.GNN.DumpObjects.doDetailedTracksInfo = True; flags.Tracking.GNN.DumpObjects.doClusters = False; flags.Tracking.GNN.DumpObjects.doParticles = False' \
+        # --postExec 'from InDetGNNTracking.InDetGNNTrackingConfig import DumpObjectsCfg; cfg.merge(DumpObjectsCfg(flags))' \
 
     Reco_tf.py \
         --CA 'all:True' --autoConfiguration 'everything' \
@@ -45,9 +48,9 @@ function ckf_tracking() {
         --multithreaded 'False' \
         --steering 'doRAWtoALL' \
         --digiSteeringConf 'StandardInTimeOnlyTruth' \
-        --postInclude 'all:PyJobTransforms.UseFrontier' \
-        --preInclude 'all:Campaigns.PhaseIIPileUp200' \
-        --preExec 'flags.Tracking.GNN.DumpObjects.doDetailedTracksInfo = True; flags.Tracking.GNN.DumpObjects.doClusters = False; flags.Tracking.GNN.DumpObjects.doParticles = False' \
+        --postInclude 'all:PyJobTransforms.UseFrontier,InDetConfig.SiSpacePointFormationConfig.InDetToXAODSpacePointConversionCfg' \
+        --preInclude 'all:Campaigns.PhaseIIPileUp200' 'InDetConfig.ConfigurationHelpers.OnlyTrackingPreInclude' \
+        --preExec 'flags.Tracking.GNN.DumpObjects.doDetailedTracksInfo = True; flags.Tracking.GNN.DumpObjects.doClusters = True; flags.Tracking.GNN.DumpObjects.doParticles = True' \
         --postExec 'from InDetGNNTracking.InDetGNNTrackingConfig import DumpObjectsCfg; cfg.merge(DumpObjectsCfg(flags))' \
         --inputRDOFile "${RDO_FILENAME}" \
         --outputAODFile 'test.aod.ckf.debug.root'  \

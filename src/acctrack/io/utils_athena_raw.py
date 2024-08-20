@@ -1,25 +1,16 @@
 """Utilities for reading raw athena files dumped from the DumpObject."""
-from typing import Dict, Any
-import pandas as pd
+from __future__ import annotations
+
+from typing import Any
+
 import numpy as np
+import pandas as pd
 
 
 def read_track_candidates(fname):
-    """Read track candidates from a file."""
-    track_candidates = []
-    with open(fname, "r") as f:
+    with open(fname) as f:
         lines = f.readlines()
-        for line in lines:
-            track_candidates.append([int(x) for x in line.strip().split(",")])
-    return track_candidates
-
-
-def read_track_candidates_clusters(fname):
-    track_candidates = []
-    with open(fname, "r") as f:
-        lines = f.readlines()
-        for line in lines:
-            track_candidates.append([int(x) for x in line.strip().split(",")])
+        track_candidates = [[int(x) for x in line.strip().split(",")] for line in lines]
     return track_candidates
 
 
@@ -257,8 +248,10 @@ def truth_match_clusters(pixel_hits, strip_hits, clusters):
     return truth_spacepoints
 
 
-def add_region_labels(hits, region_labels: Dict[int, Dict[str, Any]]):
-    """Label the detector regions (forward-endcap pixel, forward-endcap strip, etc.)"""
+def add_region_labels(
+    hits: pd.DataFrame, region_labels: dict[int, dict[str, Any]]
+) -> pd.DataFrame:
+    """Label the detector regions (forward-endcap pixel, forward-endcap strip, etc.)."""
     for region_label, conditions in region_labels.items():
         condition_mask = np.logical_and.reduce(
             [

@@ -104,6 +104,32 @@ class AthenaRawRootReader(BaseTrackDataReader):
         """
         event_number = tracks_info["event_number"]
 
+        self._read_particles(tracks_info)
+        clusters = self._read_clusters(tracks_info)
+        self._read_spacepoints(tracks_info, clusters)
+
+        detailed_matching = self._read_detailed_matching(tracks_info)
+        tracks = self._read_tracks(tracks_info)
+        if detailed_matching is not None and tracks is not None:
+            tracks = tracks.merge(
+                detailed_matching,
+                on=(
+                    "trkid",
+                    "subevent",
+                    "barcode",
+                ),
+                how="left",
+            )
+            self._save("tracks", tracks, event_number)
+
+        return event_number
+
+    def _read_particles(self, tracks_info: awkward.highlevel.Array) -> pd.DataFrame:
+        event_number = tracks_info["event_number"]
+
+        if utils_raw_root.particle_branch_names[0] not in tracks_info:
+            return None
+
         # read particles
         particle_arrays = [tracks_info[x] for x in utils_raw_root.particle_branch_names]
         particles = pd.DataFrame(
@@ -114,8 +140,14 @@ class AthenaRawRootReader(BaseTrackDataReader):
         particles.insert(0, "particle_id", particle_ids)
         particles = utils_raw_csv.particles_of_interest(particles)
         self._save("particles", particles, event_number)
+        return particles
 
-        # read clusters
+    def _read_clusters(self, tracks_info: awkward.highlevel.Array) -> pd.DataFrame:
+        event_number = tracks_info["event_number"]
+
+        if utils_raw_root.cluster_branch_names[0] not in tracks_info:
+            return None
+
         cluster_arrays = [
             tracks_info[x]
             for x in utils_raw_root.cluster_branch_names
@@ -154,8 +186,16 @@ class AthenaRawRootReader(BaseTrackDataReader):
         clusters = clusters.merge(cluster_matched, on="cluster_id", how="left")
 
         self._save("clusters", clusters, event_number)
+        return clusters
 
-        # read spacepoints
+    def _read_spacepoints(
+        self, tracks_info: awkward.highlevel.Array, clusters: pd.DataFrame | None = None
+    ) -> pd.DataFrame:
+        event_number = tracks_info["event_number"]
+
+        if utils_raw_root.spacepoint_branch_names[0] not in tracks_info:
+            return None
+
         spacepoint_arrays = [
             tracks_info[x] for x in utils_raw_root.spacepoint_branch_names
         ]
@@ -167,26 +207,28 @@ class AthenaRawRootReader(BaseTrackDataReader):
         pixel_hits = spacepoints[spacepoints["cluster_index_2"] == -1]
         strip_hits = spacepoints[spacepoints["cluster_index_2"] != -1]
 
-        # matching spacepoints to particles through clusters
-        truth = utils_raw_csv.truth_match_clusters(pixel_hits, strip_hits, clusters)
-        # regional labels
-        # region_labels = {
-        #     1: {"hardware": "PIXEL", "barrel_endcap": -2},
-        #     2: {"hardware": "STRIP", "barrel_endcap": -2},
-        #     3: {"hardware": "PIXEL", "barrel_endcap": 0},
-        #     4: {"hardware": "STRIP", "barrel_endcap": 0},
-        #     5: {"hardware": "PIXEL", "barrel_endcap": 2},
-        #     6: {"hardware": "STRIP", "barrel_endcap": 2},
-        # }
-        truth = utils_raw_csv.merge_spacepoints_clusters(truth, clusters)
-        # truth = utils_raw_csv.add_region_labels(truth, region_labels)
+        if clusters is not None:
+            # matching spacepoints to particles through clusters
+            truth = utils_raw_csv.truth_match_clusters(pixel_hits, strip_hits, clusters)
+            truth = utils_raw_csv.merge_spacepoints_clusters(truth, clusters)
+        else:
+            truth = spacepoints
         self._save("truth", truth, event_number)
+        return truth
 
-        # read detailed truth tracks (dtt)
-        # a reoc track may be matched to multiple truth tracks.
-        # detailed truth tracks contains all the truth tracks that are matched to a reco track.
-        # but we don't need all the info.
-        # Instead, we will only keep the most probable truth track.
+    def _read_detailed_matching(
+        self, tracks_info: awkward.highlevel.Array
+    ) -> pd.DataFrame:
+        """read detailed truth tracks (dtt).
+
+        A reoc track may be matched to multiple truth tracks.
+        Detailed truth tracks contains all the truth tracks that are matched to a reco track.
+        but we don't need all the info. Instead, we will only keep the most probable truth track."""
+
+        event_number = tracks_info["event_number"]
+
+        if utils_raw_root.detailed_truth_branch_names[0] not in tracks_info:
+            return None
 
         dtt_arrays = [
             tracks_info[x].to_numpy()
@@ -229,16 +271,50 @@ class AthenaRawRootReader(BaseTrackDataReader):
             ],
         )
         self._save("detailed_matching", detailed_matching, event_number)
+        return detailed_matching
 
-        # read reco tracks information.
+    def _read_tracks(self, tracks_info: awkward.highlevel.Array) -> pd.DataFrame:
+        event_number = tracks_info["event_number"]
+
+        if utils_raw_root.reco_track_branch_names[0] not in tracks_info:
+            return None
+
         track_arrays = [tracks_info[x] for x in utils_raw_root.reco_track_branch_names]
         track_info = pd.DataFrame(
             dict(zip(utils_raw_root.reco_track_col_names, track_arrays))
         )
         track_info = track_info.astype(utils_raw_root.reco_track_col_types)
         self._save("tracks", track_info, event_number)
+        return track_info
 
-        return event_number
+    def _read_sp_on_tracks(self, tracks_info: awkward.highlevel.Array) -> pd.DataFrame:
+        event_number = tracks_info["event_number"]
+
+        if utils_raw_root.reco_track_sp_branch_names[0] not in tracks_info:
+            return None
+
+        sp_on_track_arrays = [
+            tracks_info[x] for x in utils_raw_root.reco_track_sp_branch_names
+        ]
+        sp_on_track_info = pd.DataFrame(
+            dict(zip(utils_raw_root.reco_track_sp_col_names, sp_on_track_arrays))
+        )
+        sp_on_track_info = sp_on_track_info.astype(
+            utils_raw_root.reco_track_sp_col_types
+        )
+
+        groups = sp_on_track_info.groupby("trkid")
+        # for each group (track), we put the space point indices to a list without sorting.
+        # and return a list of lists.
+        tracking_contents = groups["spIdxOnTrack"].apply(lambda x: x.tolist()).tolist()
+
+        self._save("sp_on_tracks", tracking_contents, event_number)
+        return sp_on_track_info
+
+    def _read_cluster_on_tracks(
+        self, tracks_info: awkward.highlevel.Array
+    ) -> pd.DataFrame:
+        pass
 
     def _save(self, outname: str, df: pd.DataFrame, evtid: int) -> bool:
         outname = self.get_outname(outname, evtid)
@@ -264,14 +340,16 @@ class AthenaRawRootReader(BaseTrackDataReader):
         self.truth = self._read("truth", evtid)
         self.detailed_matching = self._read("detailed_matching", evtid)
         self.tracks = self._read("tracks", evtid)
-        if any(
-            x is None
-            for x in [self.clusters, self.particles, self.spacepoints, self.truth]
-        ):
-            print(f"event {evtid} are not processed.")
-            print("please run `read_file()` first!")
-            return False
-        return True
+        return all(
+            [
+                self.clusters is not None,
+                self.particles is not None,
+                self.spacepoints is not None,
+                self.truth is not None,
+                self.detailed_matching is not None,
+                self.tracks is not None,
+            ]
+        )
 
     def get_event_info(self, file_idx: int = 0) -> pd.DataFrame:
         if file_idx >= self.num_files:

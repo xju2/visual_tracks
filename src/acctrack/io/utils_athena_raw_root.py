@@ -64,10 +64,20 @@ translator = {
     "DTTstTruth_subDetType": "dtt_true_hits",
     "DTTstTrack_subDetType": "dtt_track_hits",
     "DTTstCommon_subDetType": "dtt_common_hits",
-    "TTCevent_index": ("subevent", np.int64),
+    "TTCevent_index": ("subevent", int),
     "TTCparticle_link": ("barcode", np.int64),
     "TTCprobability": ("probability", float),
     "TRKindex": ("trkid", np.int64),
+    "TRKtrack_fitter": ("track_fitter", int),
+    "TRKparticle_hypothesis": ("particle_hypothesis", int),
+    "TRKndof": ("ndof", int),
+    "TRKchiSq": ("chi2", float),
+    "TRKmot": ("mot", int),
+    "TRKoot": ("oot", int),
+    "TRKcharge": ("charge", int),
+    "TRKspacepointsIdxOnTrack": ("spIdxOnTrack", np.int64),
+    "TRKspacepointsIdxOnTrack_trkIndex": ("trkid", np.int64),
+    "TRKspacepointsIsPixel": ("isPixel", int),
 }
 
 event_branch_names = ["run_number", "event_number"]
@@ -88,12 +98,22 @@ detailed_truth_branch_names = [b for b, _ in detailed_truth_info]
 detailed_truth_col_names = [c for _, c in detailed_truth_info]
 
 reco_track_info = [
-    (b, c) for b, c in translator.items() if b.startswith("TT") or b.startswith("TRK")
+    (b, c)
+    for b, c in translator.items()
+    if (
+        b.startswith("TT") or b.startswith("TRK") and not b.startswith("TRKspacepoints")
+    )
 ]
 reco_track_branch_names = [b for b, _ in reco_track_info]
 reco_track_col_names = [c[0] for _, c in reco_track_info]
 reco_track_col_types = {c[0]: c[1] for _, c in reco_track_info}
 
+reco_track_sp_info = [
+    (b, c) for b, c in translator.items() if b.startswith("TRKspacepoints")
+]
+reco_track_sp_branch_names = [b for b, _ in reco_track_sp_info]
+reco_track_sp_col_names = [c[0] for _, c in reco_track_sp_info]
+reco_track_sp_col_types = {c[0]: c[1] for _, c in reco_track_sp_info}
 
 all_branches = (
     event_branch_names

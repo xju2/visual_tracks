@@ -169,11 +169,10 @@ class TrackAlgComparator(HyperparametersMixin):
         )
         print(
             f"{other_label} is a subset: {num_other_issubset}, {tot_filtered_tracks}, "
-            f"{num_other_issubset/tot_filtered_tracks:.4f}"
+            f"{num_other_issubset / tot_filtered_tracks:.4f}"
         )
         print(
-            f"Disjoint:  {num_disjoints}, {tot_filtered_tracks},\
-                {num_disjoints / tot_filtered_tracks:.4f}"
+            f"Disjoint:  {num_disjoints}, {tot_filtered_tracks}, {num_disjoints / tot_filtered_tracks:.4f}"
         )
 
         (
@@ -214,8 +213,8 @@ class TrackAlgComparator(HyperparametersMixin):
 
         # `isin` does not preserve the order of the original array
         # but the dataframe index is the same as trk_id.
-        self.common_track = reader.true_tracks.loc[trk_id]
-        self.other_common_track = other_reader.true_tracks.loc[other_trk_id]
+        self.common_track = reader.tracks.loc[trk_id]
+        self.other_common_track = other_reader.tracks.loc[other_trk_id]
 
         return df_common
 
@@ -241,10 +240,17 @@ class TrackAlgComparator(HyperparametersMixin):
         plt.show()
 
         # chi2 / ndof
-        chi2_hist_config = dict(bins=50, range=(0, 4), alpha=0.5, histtype="step", lw=2)
-        chi2 = self.common_track.chi2.values / self.common_track.nDoF.values
+        chi2_hist_config = {
+            "bins": 50,
+            "range": (0, 4),
+            "alpha": 0.5,
+            "histtype": "step",
+            "lw": 2,
+        }
+        chi2 = self.common_track.chi2.to_numpy() / self.common_track.nDoF.to_numpy()
         other_chi2 = (
-            self.other_common_track.chi2.values / self.other_common_track.nDoF.values
+            self.other_common_track.chi2.to_numpy()
+            / self.other_common_track.nDoF.to_numpy()
         )
         plt.title("Common Tracks")
         plt.hist(chi2, **chi2_hist_config, label=label)
@@ -256,7 +262,7 @@ class TrackAlgComparator(HyperparametersMixin):
 
         # scatter plot for chi2 / ndof
         plt.title("Common Tracks")
-        config = dict(s=10, alpha=0.5)
+        config = {"s": 10, "alpha": 0.5}
         plt.scatter(chi2, other_chi2, **config)
         plt.plot([0, 4], [0, 4], color="red", linestyle="--")
         plt.xlim(0, 4)
@@ -289,8 +295,8 @@ class TrackAlgComparator(HyperparametersMixin):
     def plot_disjoint_tracks(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         """Analyze the disjoint tracks. We have to the comparison twice.
         Once looping over the tracks in the first reader,
-        and once looping over the tracks in the second reader."""
-
+        and once looping over the tracks in the second reader.
+        """
         reader, other_reader = self.readers()
         self.match_to_truth()  # will be used to quanlify the disjoint tracks
         label, other_label = reader.name, other_reader.name
@@ -308,7 +314,7 @@ class TrackAlgComparator(HyperparametersMixin):
         num_disjoints = len(disjoint_tracks)
         num_other_disjoints = len(disjoint_other_tracks)
 
-        cluster_config = dict(bins=31, range=(-0.5, 30.5), alpha=0.5)
+        cluster_config = {"bins": 31, "range": (-0.5, 30.5), "alpha": 0.5}
         plt.title("Disjoint tracks")
         plt.hist(
             [len(x[1]) for x in disjoint_tracks],

@@ -70,7 +70,7 @@ translator = {
     "TRKindex": ("trkid", np.int64),
     "TRKtrack_fitter": ("track_fitter", int),
     "TRKparticle_hypothesis": ("particle_hypothesis", int),
-    "TRKndof": ("ndof", int),
+    "TRKndof": ("nDoF", int),
     "TRKchiSq": ("chi2", float),
     "TRKmot": ("mot", int),
     "TRKoot": ("oot", int),

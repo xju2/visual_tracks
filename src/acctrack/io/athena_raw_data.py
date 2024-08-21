@@ -1,5 +1,5 @@
 """AthenaRawDataReader is to read the data dumped by the DumpObjects algorithm in Athena.
-See: https://gitlab.cern.ch/xju/athena/-/tree/xju/exatrkx-rel21.9/Tracking/TrkDumpAlgs
+See: https://gitlab.cern.ch/xju/athena/-/tree/xju/exatrkx-rel21.9/Tracking/TrkDumpAlgs.
 
 The dumped data includes:
 * Data Information
@@ -19,16 +19,18 @@ The dumped data includes:
 They are add the same postfix: "{}_evt{index}-{run_number}_{event_number}.txt"
 
 """
-from typing import List, Tuple, Callable, Union, Any
-from pathlib import Path
+from __future__ import annotations
 
 import re
+from pathlib import Path
+from typing import Any, Callable
+
 import numpy as np
 import pandas as pd
 
-from acctrack.io.base import BaseTrackDataReader
-from acctrack.io import utils_athena_raw as reader_utils
 from acctrack.io import utils as io_utils
+from acctrack.io import utils_athena_raw as reader_utils
+from acctrack.io.base import BaseTrackDataReader
 
 
 class AthenaRawDataReader(BaseTrackDataReader):
@@ -55,17 +57,17 @@ class AthenaRawDataReader(BaseTrackDataReader):
         self.all_evtids = [find_evt_info(x) for x in all_evts]
         self.all_evtids = [x for x in self.all_evtids if x is not None]
         self.nevts = len(self.all_evtids)
-        print("Total {} events in directory: {}".format(self.nevts, self.inputdir))
+        print(f"Total {self.nevts} events in directory: {self.inputdir}")
 
     def getnamepatch(self, evtid, run_number, event_number):
-        """Get the postfix for the given event id or event number"""
+        """Get the postfix for the given event id or event number."""
         if evtid is None and run_number is None and event_number is None:
             event_info = self.all_evtids[0]
         elif event_number is not None:
             event_info = [x for x in self.all_evtids if x[2] == event_number]
             if len(event_info) == 0:
                 raise ValueError(
-                    "Cannot find the event with event number: {}".format(event_number)
+                    f"Cannot find the event with event number: {event_number}"
                 )
             event_info = event_info[0]
         else:
@@ -90,7 +92,7 @@ class AthenaRawDataReader(BaseTrackDataReader):
 
     def read_wrap(
         self,
-        read_fn: Callable[[str], Union[pd.DataFrame, Any]],
+        read_fn: Callable[[str], pd.DataFrame | Any],
         prefix,
         evtid=None,
         run_number=None,
@@ -111,7 +113,7 @@ class AthenaRawDataReader(BaseTrackDataReader):
 
     def read_track_candidates(
         self, evtid=None, run_number=None, event_number=None
-    ) -> List[List[int]]:
+    ) -> list[list[int]]:
         """Read track candidates from the input directory.
 
         Return
@@ -130,14 +132,14 @@ class AthenaRawDataReader(BaseTrackDataReader):
 
     def read_track_candidates_clusters(
         self, evtid=None, run_number=None, event_number=None
-    ) -> List[List[int]]:
+    ) -> list[list[int]]:
         """Read track candidates from the input directory.
 
         Return
         ------
-            List[List[int]]: each element is a list of cluster indices
+            list[list[int]]: each element is a list of cluster indices
         """
-        self.tracks_clusters = self.read_wrap(
+        self.clusters_on_track = self.read_wrap(
             reader_utils.read_track_candidates,
             "trackcandidates_clusters",
             evtid,
@@ -145,14 +147,15 @@ class AthenaRawDataReader(BaseTrackDataReader):
             event_number,
             suffix="pkl",
         )
-        return self.tracks_clusters
+        return self.clusters_on_track
 
     def read_spacepoints(
         self, evtid=None, run_number=None, event_number=None
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """Read spacepoints from the input directory
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """Read spacepoints from the input directory.
 
-        Return:
+        Return
+        ------
             pd.DataFrame: spacepoints
         """
         self.spacepoints = self.read_wrap(
@@ -167,8 +170,10 @@ class AthenaRawDataReader(BaseTrackDataReader):
     def read_clusters(
         self, evtid=None, run_number=None, event_number=None
     ) -> pd.DataFrame:
-        """Read clusters from the input directory
-        Return:
+        """Read clusters from the input directory.
+
+        Return
+        ------
             pd.DataFrame: clusters
         """
         filename = self.get_filename("clusters", evtid, run_number, event_number)
@@ -274,9 +279,10 @@ class AthenaRawDataReader(BaseTrackDataReader):
     def read_particles(
         self, evtid=None, run_number=None, event_number=None
     ) -> pd.DataFrame:
-        """Read particles from the input directory
+        """Read particles from the input directory.
 
-        Return:
+        Return
+        ------
             pd.DataFrame: particles
         """
         self.particles = self.read_wrap(
@@ -294,8 +300,10 @@ class AthenaRawDataReader(BaseTrackDataReader):
     def read_detailed_matching(
         self, evtid=None, run_number=None, event_number=None
     ) -> pd.DataFrame:
-        """Read Detailed True Track Collection from the input directory
-        Return:
+        """Read Detailed True Track Collection from the input directory.
+
+        Return
+        ------
             pd.DataFrame: detailed matching
         """
         self.detailed_matching = self.read_wrap(
@@ -308,11 +316,7 @@ class AthenaRawDataReader(BaseTrackDataReader):
         return self.detailed_matching
 
     def _read(self, evtid=None, run_number=None, event_number=None) -> None:
-        """Read all the data from the input directory
-
-        Return:
-            None
-        """
+        """Read all the data from the input directory."""
         info = (evtid, run_number, event_number)
         self.read_spacepoints(*info)
         self.read_particles(*info)
@@ -358,7 +362,7 @@ class AthenaRawDataReader(BaseTrackDataReader):
         return all_matched_to_truth
 
     def __str__(self) -> str:
-        return "{} reads from {}.".format(self.name, self.inputdir)
+        return f"{self.name} reads from {self.inputdir}."
 
 
 if __name__ == "__main__":

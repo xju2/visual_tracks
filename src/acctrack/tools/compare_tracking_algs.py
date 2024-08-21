@@ -1,8 +1,10 @@
-"""This module compares tracking algorithms represented by two AthenaRawDataReader.
+"""Compare tracking algorithms represented by two AthenaRawDataReader.
 Each tracking algorithm is run in Athena frameework and produces a TrackCollection.
 The two TrackCollections are dumped to text files and read by the reader.
  """
-from typing import Tuple, Any, List
+from __future__ import annotations
+
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -22,19 +24,19 @@ class TrackAlgComparator(HyperparametersMixin):
         self.other_reader = other_reader
 
         # common tracks
-        self.common_track_indices: List[Tuple[int, List[int], int]] = None
+        self.common_track_indices: list[tuple[int, list[int], int]] = None
         self.common_info: pd.DataFrame = None
         self.common_track: pd.DataFrame = None
         self.common_other_track: pd.DataFrame = None
 
         # disjoint tracks
-        self.disjoint_track_indices: List[Tuple[int, List[int]]] = None
+        self.disjoint_track_indices: list[tuple[int, list[int]]] = None
         self.disjoint_info: pd.DataFrame = None
         self.disjoint_track: pd.DataFrame = None
         self.disjoint_other_track: pd.DataFrame = None
 
         # unmatched tracks
-        self.unmatched_tracks: List[Tuple[int, List[int]]] = None
+        self.unmatched_tracks: list[tuple[int, list[int]]] = None
 
         # optional to reverse the comparison in the run time.
         self._reverse_comparison = False
@@ -61,7 +63,7 @@ class TrackAlgComparator(HyperparametersMixin):
             self.redo_comparison = True
             self._reverse_comparison = do_reverse
 
-    def compare_track_contents(self) -> Tuple[Any, Any, Any]:
+    def compare_track_contents(self) -> tuple[Any, Any, Any]:
         """Compares each track in the first track collection
         with all tracks in the other track collection. Each track is labeled as
         common (also means matched), disjoint, or unmatched.
@@ -73,10 +75,15 @@ class TrackAlgComparator(HyperparametersMixin):
         unmatched:
           track do not match to any track in the other collection.
 
-        Returns:
+        Returns
+        -------
             common_tracks: list of tuples of (track_id, track, cluster ids, other_track_id)
             unmatched_tracks: list of tuples of (track_id, cluster ids)
             disjoint_tracks: list of tuples of (track_id, cluster ids)
+
+        Raises
+        ------
+            ValueError: If the track contents are empty.
         """
         if not self.redo_comparison and self.common_info is not None:
             return (
@@ -90,9 +97,11 @@ class TrackAlgComparator(HyperparametersMixin):
 
         label, other_label = track_reader.name, other_track_reader.name
         tracks, other_tracks = (
-            track_reader.tracks_clusters,
-            other_track_reader.tracks_clusters,
+            track_reader.clusters_on_track,
+            other_track_reader.clusters_on_track,
         )
+        if tracks is None or other_tracks is None:
+            raise ValueError("Track contents are empty.")
 
         num_matched = 0
         num_issubset = 0
@@ -163,7 +172,8 @@ class TrackAlgComparator(HyperparametersMixin):
             f"{num_other_issubset/tot_filtered_tracks:.4f}"
         )
         print(
-            f"Disjoint:  {num_disjoints}, {tot_filtered_tracks}, {num_disjoints/tot_filtered_tracks:.4f}"
+            f"Disjoint:  {num_disjoints}, {tot_filtered_tracks},\
+                {num_disjoints / tot_filtered_tracks:.4f}"
         )
 
         (
@@ -179,7 +189,12 @@ class TrackAlgComparator(HyperparametersMixin):
         return (common_tracks, unmatched_tracks, disjoint_tracks)
 
     def analyse_common_track(self) -> pd.DataFrame:
-        """Return a common track object."""
+        """Return a common track object.
+
+        Returns
+        -------
+            df_common: pd.DataFrame
+        """
         self.compare_track_contents()
 
         common_tracks = self.common_track_indices
@@ -204,7 +219,7 @@ class TrackAlgComparator(HyperparametersMixin):
 
         return df_common
 
-    def plot_common_tracks(self) -> Tuple[np.array, np.array]:
+    def plot_common_tracks(self) -> tuple[np.array, np.array]:
         """Analyze the common tracks. Compare their chi2 and other metrics."""
         df = self.analyse_common_track()
         reader, other_reader = self.readers()
@@ -235,7 +250,7 @@ class TrackAlgComparator(HyperparametersMixin):
         plt.hist(chi2, **chi2_hist_config, label=label)
         plt.hist(other_chi2, **chi2_hist_config, label=other_label)
         plt.xlim(0, 4)
-        plt.xlabel("$\chi^2$/ndof")
+        plt.xlabel(r"$\chi^2$/ndof")
         plt.legend()
         plt.show()
 
@@ -246,8 +261,8 @@ class TrackAlgComparator(HyperparametersMixin):
         plt.plot([0, 4], [0, 4], color="red", linestyle="--")
         plt.xlim(0, 4)
         plt.ylim(0, 4)
-        plt.xlabel(f"{label} $\chi^2$/ndof")
-        plt.ylabel(f"{other_label} $\chi^2$/ndof")
+        plt.xlabel(rf"{label} $\chi^2$/ndof")
+        plt.ylabel(rf"{other_label} $\chi^2$/ndof")
         plt.show()
 
         # difference in chi2 / ndof
@@ -259,7 +274,7 @@ class TrackAlgComparator(HyperparametersMixin):
         delta = (max_bin_value - min_bin_value) * 0.08
         plt.text(-1.5, y_start, f"Mean: {np.mean(delta_chi2):8.4f}", fontsize=12)
         plt.text(-1.5, y_start - delta, f"Std:  {np.std(delta_chi2):8.4f}", fontsize=12)
-        plt.xlabel(f"({label} - {other_label}) $\chi^2$/ndof")
+        plt.xlabel(rf"({label} - {other_label}) $\chi^2$/ndof")
         plt.plot([0, 0], [0, max_bin_value], color="red", linestyle="--")
         plt.show()
 
@@ -271,7 +286,7 @@ class TrackAlgComparator(HyperparametersMixin):
         reader.match_to_truth()
         other_reader.match_to_truth()
 
-    def plot_disjoint_tracks(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def plot_disjoint_tracks(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         """Analyze the disjoint tracks. We have to the comparison twice.
         Once looping over the tracks in the first reader,
         and once looping over the tracks in the second reader."""

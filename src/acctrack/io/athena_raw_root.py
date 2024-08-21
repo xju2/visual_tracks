@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import pickle
 from pathlib import Path
+from typing import Any
 
 import awkward
 import numpy as np
@@ -20,9 +22,15 @@ class AthenaRawRootReader(BaseTrackDataReader):
     """
 
     def __init__(
-        self, inputdir, output_dir=None, overwrite=True, name="AthenaRawRootReader"
+        self,
+        inputdir,
+        output_dir=None,
+        overwrite=True,
+        name="AthenaRawRootReader",
+        debug=False,
     ):
         super().__init__(inputdir, output_dir, overwrite, name)
+        self.debug = debug
 
         # find all files in inputdir
         root_files = sorted(self.inputdir.glob("*.root"))
@@ -55,7 +63,7 @@ class AthenaRawRootReader(BaseTrackDataReader):
 
         self.num_files = len(self.root_files)
         print(
-            f"{self.inputdir} contains  {self.num_files} files and total {self.tot_evts} events."
+            f"Directory: {self.inputdir} contains  {self.num_files} files and total {self.tot_evts} events."
         )
 
     def read_file(self, file_idx: int = 0, max_evts: int = -1) -> list[int]:
@@ -79,7 +87,14 @@ class AthenaRawRootReader(BaseTrackDataReader):
         print(f"Reading file: {filename}")
         tree = uproot.open(f"{filename}:{self.tree_name}")
 
-        all_event_info = tree.arrays(utils_raw_root.all_branches)
+        existing_branches = set(tree.keys())
+        requested_branches = set(utils_raw_root.all_branches)
+        missing_branches = requested_branches - existing_branches
+        if missing_branches:
+            print(f"Missing branches: {missing_branches}")
+            requested_branches -= missing_branches
+
+        all_event_info = tree.arrays(requested_branches)
         num_events = len(all_event_info["event_number"])
         print(f"Number of events: {num_events} in file {filename}.")
         if max_evts > 0 and max_evts < num_events:
@@ -122,12 +137,23 @@ class AthenaRawRootReader(BaseTrackDataReader):
             )
             self._save("tracks", tracks, event_number)
 
+        # read track contents
+        sp_on_tracks = self._read_sp_on_tracks(tracks_info)
+        cluster_on_tracks = self._read_cluster_on_tracks(tracks_info)
+
+        if sp_on_tracks is not None and cluster_on_tracks is not None:
+            cluster_on_tracks_array = np.array(
+                [x for item in cluster_on_tracks for x in item], dtype=np.int64
+            )
+            sp_on_tracks["clusterIdxOnTrack"] = cluster_on_tracks_array
+            self._save("trackcontents", sp_on_tracks, event_number)
+
         return event_number
 
     def _read_particles(self, tracks_info: awkward.highlevel.Array) -> pd.DataFrame:
         event_number = tracks_info["event_number"]
 
-        if utils_raw_root.particle_branch_names[0] not in tracks_info:
+        if utils_raw_root.particle_branch_names[0] not in tracks_info.fields:
             return None
 
         # read particles
@@ -145,7 +171,7 @@ class AthenaRawRootReader(BaseTrackDataReader):
     def _read_clusters(self, tracks_info: awkward.highlevel.Array) -> pd.DataFrame:
         event_number = tracks_info["event_number"]
 
-        if utils_raw_root.cluster_branch_names[0] not in tracks_info:
+        if utils_raw_root.cluster_branch_names[0] not in tracks_info.fields:
             return None
 
         cluster_arrays = [
@@ -193,7 +219,7 @@ class AthenaRawRootReader(BaseTrackDataReader):
     ) -> pd.DataFrame:
         event_number = tracks_info["event_number"]
 
-        if utils_raw_root.spacepoint_branch_names[0] not in tracks_info:
+        if utils_raw_root.spacepoint_branch_names[0] not in tracks_info.fields:
             return None
 
         spacepoint_arrays = [
@@ -219,15 +245,23 @@ class AthenaRawRootReader(BaseTrackDataReader):
     def _read_detailed_matching(
         self, tracks_info: awkward.highlevel.Array
     ) -> pd.DataFrame:
-        """read detailed truth tracks (dtt).
+        """Read detailed truth tracks (dtt).
 
         A reoc track may be matched to multiple truth tracks.
         Detailed truth tracks contains all the truth tracks that are matched to a reco track.
-        but we don't need all the info. Instead, we will only keep the most probable truth track."""
+        but we don't need all the info. Instead, we will only keep the most probable truth track.
 
+        Args
+        ----
+            tracks_info: awkward.highlevel.Array, the data of one event.
+
+        Returns
+        -------
+            detailed_matching: pd.DataFrame, the detailed truth track info.
+        """
         event_number = tracks_info["event_number"]
 
-        if utils_raw_root.detailed_truth_branch_names[0] not in tracks_info:
+        if utils_raw_root.detailed_truth_branch_names[0] not in tracks_info.fields:
             return None
 
         dtt_arrays = [
@@ -276,7 +310,7 @@ class AthenaRawRootReader(BaseTrackDataReader):
     def _read_tracks(self, tracks_info: awkward.highlevel.Array) -> pd.DataFrame:
         event_number = tracks_info["event_number"]
 
-        if utils_raw_root.reco_track_branch_names[0] not in tracks_info:
+        if utils_raw_root.reco_track_branch_names[0] not in tracks_info.fields:
             return None
 
         track_arrays = [tracks_info[x] for x in utils_raw_root.reco_track_branch_names]
@@ -290,7 +324,9 @@ class AthenaRawRootReader(BaseTrackDataReader):
     def _read_sp_on_tracks(self, tracks_info: awkward.highlevel.Array) -> pd.DataFrame:
         event_number = tracks_info["event_number"]
 
-        if utils_raw_root.reco_track_sp_branch_names[0] not in tracks_info:
+        if utils_raw_root.reco_track_sp_branch_names[0] not in tracks_info.fields:
+            if self.debug:
+                print("No track content info (space points).")
             return None
 
         sp_on_track_arrays = [
@@ -303,32 +339,51 @@ class AthenaRawRootReader(BaseTrackDataReader):
             utils_raw_root.reco_track_sp_col_types
         )
 
-        groups = sp_on_track_info.groupby("trkid")
-        # for each group (track), we put the space point indices to a list without sorting.
-        # and return a list of lists.
-        tracking_contents = groups["spIdxOnTrack"].apply(lambda x: x.tolist()).tolist()
+        # groups = sp_on_track_info.groupby("trkid")
+        # # for each group (track), we put the space point indices to a list without sorting.
+        # # and return a list of lists.
+        # tracking_contents = groups["spIdxOnTrack"].apply(lambda x: x.tolist()).tolist()
 
-        self._save("sp_on_tracks", tracking_contents, event_number)
+        self._save("sps_on_track", sp_on_track_info, event_number)
         return sp_on_track_info
 
     def _read_cluster_on_tracks(
         self, tracks_info: awkward.highlevel.Array
-    ) -> pd.DataFrame:
-        pass
+    ) -> list[list[int]]:
+        event_number = tracks_info["event_number"]
+        branch_name = "TRKmeasurementsOnTrack_pixcl_sctcl_index"
+        if branch_name not in tracks_info.fields:
+            if self.debug:
+                print("No track content info (clusters).")
+            return None
 
-    def _save(self, outname: str, df: pd.DataFrame, evtid: int) -> bool:
+        cluster_on_track_list = tracks_info[branch_name]
+        self._save("clusters_on_track", cluster_on_track_list, event_number)
+        return cluster_on_track_list
+
+    def _save(self, outname: str, df: Any, evtid: int) -> bool:
         outname = self.get_outname(outname, evtid)
         if outname.exists() and not self.overwrite:
             return True
         if df is not None:
-            df.to_parquet(outname, compression="gzip")
+            if isinstance(df, pd.DataFrame):
+                df.to_parquet(outname, compression="gzip")
+            else:
+                # use pickle for the rest data objects
+                outname = outname.with_suffix(".pkl")
+                with open(outname, "wb") as f:
+                    pickle.dump(df, f)
         return False
 
     def _read(self, outname: str, evtid: int) -> pd.DataFrame:
         outname = self.get_outname(outname, evtid)
-        if not outname.exists():
-            return None
-        return pd.read_parquet(outname)
+        if outname.exists():
+            return pd.read_parquet(outname)
+
+        if outname.with_suffix(".pkl").exists():
+            with open(outname.with_suffix(".pkl"), "rb") as f:
+                return pickle.load(f)  # noqa: S301
+        return None
 
     def get_outname(self, outname: str, evtid: int) -> Path:
         return self.outdir / f"event{evtid:06d}-{outname}.parquet"
@@ -340,6 +395,10 @@ class AthenaRawRootReader(BaseTrackDataReader):
         self.truth = self._read("truth", evtid)
         self.detailed_matching = self._read("detailed_matching", evtid)
         self.tracks = self._read("tracks", evtid)
+        self.sps_on_track = self._read("sps_on_track", evtid)
+        self.clusters_on_track = self._read("clusters_on_track", evtid)
+        self.track_contents = self._read("trackcontents", evtid)
+
         return all(
             [
                 self.clusters is not None,
@@ -348,6 +407,8 @@ class AthenaRawRootReader(BaseTrackDataReader):
                 self.truth is not None,
                 self.detailed_matching is not None,
                 self.tracks is not None,
+                self.sps_on_track is not None,
+                self.clusters_on_track is not None,
             ]
         )
 

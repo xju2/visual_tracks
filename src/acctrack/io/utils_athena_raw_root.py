@@ -100,9 +100,7 @@ detailed_truth_col_names = [c for _, c in detailed_truth_info]
 reco_track_info = [
     (b, c)
     for b, c in translator.items()
-    if (
-        b.startswith("TT") or b.startswith("TRK") and not b.startswith("TRKspacepoints")
-    )
+    if ((b.startswith(("TT", "TRK"))) and not b.startswith("TRKspacepoints"))
 ]
 reco_track_branch_names = [b for b, _ in reco_track_info]
 reco_track_col_names = [c[0] for _, c in reco_track_info]
@@ -122,6 +120,8 @@ all_branches = (
     + cluster_branch_names
     + detailed_truth_branch_names
     + reco_track_branch_names
+    + reco_track_sp_branch_names
+    + ["TRKmeasurementsOnTrack_pixcl_sctcl_index"]
 )
 
 cluster_link_branch_names = ["CLparticleLink_eventIndex", "CLparticleLink_barcode"]

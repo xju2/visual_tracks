@@ -154,7 +154,7 @@ function metric_learning_tracking() {
     clean_up
     export ATHENA_CORE_NUMBER=1
     ModelName="MetricLearning"
-    TritionServer="nid200297"
+    TritionServer="nid200509"
     # --skipEvents 44
     # 'InDetConfig.ConfigurationHelpers.OnlyTrackingPreInclude'
     # --preExec 'flags.Tracking.GNN.usePixelHitsOnly = True; from AthOnnxComps.OnnxRuntimeFlags import OnnxRuntimeType; flags.AthOnnx.ExecutionProvider = OnnxRuntimeType.CUDA' \

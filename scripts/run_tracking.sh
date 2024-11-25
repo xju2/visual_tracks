@@ -7,11 +7,16 @@
 RDO_FILENAME="/global/cfs/cdirs/m3443/data/GNN4ITK/RDOFiless/rel24_ttbar_testing/RDO.37737772._000213.pool.root.1"
 
 ## datasets for generality studies
+ResultDIR="Results_20241118"
 MuonPU0=$(\ls /global/cfs/cdirs/m3443/data/GNN4ITK/RDOFiless/mc21_14TeV.900495.PG_single_muonpm_Pt10_etaFlatnp0_43.recon.RDO.e8481_s4149_r14697/* | paste -sd ',')
-ZmumuPU0=$(\ls /global/cfs/cdirs/m3443/data/GNN4ITK/RDOFiless/mc21_14TeV.601190.PhPy8EG_AZNLO_Zmumu.recon.RDO.e8481_s4203_r14697/* | paste -sd ',')
+#ZmumuPU0=$(\ls /global/cfs/cdirs/m3443/data/GNN4ITK/RDOFiless/mc21_14TeV.601190.PhPy8EG_AZNLO_Zmumu.recon.RDO.e8481_s4203_r14697/* | paste -sd ',')
 ZmumuPU200=$(\ls /global/cfs/cdirs/m3443/data/GNN4ITK/RDOFiless/mc21_14TeV.601190.PhPy8EG_AZNLO_Zmumu.recon.RDO.e8481_s4203_r14701/* | paste -sd ',')
 HaaPU0=$(\ls /global/cfs/cdirs/m3443/data/GNN4ITK/RDOFiless/mc21_14TeV.603008.PhPy8_ggH_H125_a55a55_4b_ctau100.recon.RDO.e8481_s4149_r14697/* | paste -sd ',')
-HaaPU200=$(\ls /global/cfs/cdirs/m3443/data/GNN4ITK/RDOFiless/mc21_14TeV.603008.PhPy8_ggH_H125_a55a55_4b_ctau100.recon.RDO.e8481_s4149_r14700/* | paste -sd ',')
+HaaPU200=$(\ls /global/cfs/cdirs/m3443/data/GNN4ITK/RDOFiless/mc21_14TeV.603008.PhPy8_ggH_H125_a55a55_4b_ctau100.recon.RDO.e8481_s4149_r14700/* | head -1 | paste -sd ',')
+
+echo $MuonPU0
+
+TritionServer="nid008325"
 
 
 #echo $RDO_FILENAME
@@ -156,10 +161,12 @@ function run_idpvm() {
 	IN_FILENAME=$1
 	OUT_FILENAME=$2
     clean_up
-	runIDPVM.py --filesInput ${IN_FILENAME} --outputFile ${OUT_FILENAME} \
+	runIDPVM.py --filesInput ${IN_FILENAME} \
+		--outputFile ${OUT_FILENAME} \
 		--doTightPrimary \
-        --doTracksInJets  \
-		--HSFlag "HardScatter"  2>&1 | tee log.idpvm.txt
+		--doLoose \
+        --truthMinPt 1000 \
+		--HSFlag "All"  2>&1 | tee log.idpvm.txt
 }
 
 
@@ -167,7 +174,6 @@ function metric_learning_tracking() {
     clean_up
     export ATHENA_CORE_NUMBER=1
     ModelName="MetricLearning"
-    TritionServer="nid008229"
 
     if [ "$#" -ne 4 ]; then
         echo "Usage: $0 <input_file> <out_file> <log_file> <process_name>"
@@ -196,7 +202,6 @@ function metric_learning_tracking() {
 		--athenaopts='--loglevel=INFO' \
         --maxEvents -1 2>&1 | tee ${LOG_FILE}
 
-    ResultDIR="Results_20241118"
     ./clean_athena_run.sh
     mkdir -p $ResultDIR/${TAG_NAME}
     mv $OUT_FILE $LOG_FILE prmon.* perfmonmt* $ResultDIR/${TAG_NAME}/
@@ -239,10 +244,27 @@ function rename_acorn_outs() {
 
 # time metric_learning_tracking $RDO_FILENAME test.aod.ML.gnnTriton.root log.ML.gnnTrition.txt Testing
 
-time metric_learning_tracking "$ZmumuPU0" aod.ML.ZmumuPU0.root log.ML.ZmumuPU0.txt ZmumuPU0
-time metric_learning_tracking "$ZmumuPU200" aod.ML.ZmumuPU200.root log.ML.ZmumuPU200.txt ZmumuPU200
-time metric_learning_tracking "$HaaPU0" aod.ML.HaaPU0.root log.ML.HaaPU0.txt HaaPU0
-time metric_learning_tracking "$HaaPU200" aod.ML.HaaPU200.root log.ML.HaaPU200.txt HaaPU200
+## >>(dataset is on tape only) time metric_learning_tracking "$ZmumuPU0" aod.ML.ZmumuPU0.root log.ML.ZmumuPU0.txt ZmumuPU0
+# >(finished) time metric_learning_tracking "$MuonPU0" aod.ML.MuonPU0.root log.ML.MuonPU0.txt MuonPU0
+# >(finished) time metric_learning_tracking "$ZmumuPU200" aod.ML.ZmumuPU200.root log.ML.ZmumuPU200.txt ZmumuPU200
+# >(finished) time metric_learning_tracking "$HaaPU0" aod.ML.HaaPU0.root log.ML.HaaPU0.txt HaaPU0
+# >(finished) time metric_learning_tracking "$HaaPU200" aod.ML.HaaPU200.root log.ML.HaaPU200.txt HaaPU200
+
+function run_idpvm_validation(){
+    if [ "$#" -ne 1 ]; then
+        echo "Usage: $0 <process_name>"
+        return 1
+    fi
+    ProcessName=$1
+    run_idpvm ${ResultDIR}/${ProcessName}/aod.ML.${ProcessName}.root ${ResultDIR}/${ProcessName}/physval.root
+    ./clean_athena_run.sh
+    mv log.idpvm.txt $ResultDIR/${ProcessName}/
+}
+
+# run_idpvm_validation MuonPU0 \
+run_idpvm_validation ZmumuPU200
+# run_idpvm_validation HaaPU0 \
+# run_idpvm_validation HaaPU200
 
 # rename_acorn_outs
 

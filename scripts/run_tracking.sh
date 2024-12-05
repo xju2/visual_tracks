@@ -160,6 +160,8 @@ function run_idpvm() {
 
 	IN_FILENAME=$1
 	OUT_FILENAME=$2
+    echo "Running IDPVM with input file: ${IN_FILENAME}"
+    echo "Retults will be saved to: ${OUT_FILENAME}"
     clean_up
 	runIDPVM.py --filesInput ${IN_FILENAME} \
 		--outputFile ${OUT_FILENAME} \
@@ -256,7 +258,7 @@ function run_idpvm_validation(){
         return 1
     fi
     ProcessName=$1
-    run_idpvm ${ResultDIR}/${ProcessName}/aod.ML.${ProcessName}.root ${ResultDIR}/${ProcessName}/physval.root
+    run_idpvm "${ResultDIR}/${ProcessName}/aod.MetricLearning.${ProcessName}.root" "${ResultDIR}/${ProcessName}/physval.root"
     ./clean_athena_run.sh
     mv log.idpvm.txt $ResultDIR/${ProcessName}/
 }

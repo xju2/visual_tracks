@@ -16,7 +16,7 @@ HaaPU200=$(\ls /global/cfs/cdirs/m3443/data/GNN4ITK/RDOFiless/mc21_14TeV.603008.
 
 echo $MuonPU0
 
-TritionServer="nid008325"
+TritionServer="nid200377"
 
 
 #echo $RDO_FILENAME
@@ -252,6 +252,8 @@ function rename_acorn_outs() {
 # >(finished) time metric_learning_tracking "$HaaPU0" aod.ML.HaaPU0.root log.ML.HaaPU0.txt HaaPU0
 # >(finished) time metric_learning_tracking "$HaaPU200" aod.ML.HaaPU200.root log.ML.HaaPU200.txt HaaPU200
 
+time metric_learning_tracking "$MuonPU0" aod.ML.MuonPU0.root log.ML.MuonPU0.txt MuonPU0
+
 function run_idpvm_validation(){
     if [ "$#" -ne 1 ]; then
         echo "Usage: $0 <process_name>"
@@ -264,7 +266,7 @@ function run_idpvm_validation(){
 }
 
 # run_idpvm_validation MuonPU0 \
-run_idpvm_validation ZmumuPU200
+# run_idpvm_validation ZmumuPU200
 # run_idpvm_validation HaaPU0 \
 # run_idpvm_validation HaaPU200
 
